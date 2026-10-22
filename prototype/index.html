@@ -1,0 +1,597 @@
+<title>צלחת השבוע</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Suez+One&family=Assistant:wght@400;600;700&family=Rubik:wght@400;600;700&display=swap">
+<style>
+/* Layout: one column kitchen-notebook app — sticky tab bar, week as day rows, list views below */
+:root{
+  --bg:#F4F7F2; --surface:#FFFFFF; --ink:#1C251F; --muted:#5A6A5F; --line:#DCE3D8;
+  --accent:#2E6A3E; --accent-ink:#FFFFFF; --accent-soft:#E2EEE3;
+  --kids:#B8436F; --kids-soft:#F8E6EE; --budget:#9A6A00; --budget-soft:#FBF0D6;
+  --quick:#2C67AC; --quick-soft:#E3EDF9; --prep:#2E6A3E; --prep-soft:#E2EEE3;
+  --warn:#B4441F;
+  --display:"Suez One","Rubik","Assistant",system-ui,sans-serif;
+  --body:"Assistant","Rubik",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#111612; --surface:#1A211C; --ink:#E6EDE7; --muted:#9BAA9F; --line:#2C3830;
+  --accent:#7CC490; --accent-ink:#0F1A12; --accent-soft:#1E3325;
+  --kids:#F08DB1; --kids-soft:#3A2030; --budget:#E9B949; --budget-soft:#352A12;
+  --quick:#86B5EE; --quick-soft:#1C2A3D; --prep:#7CC490; --prep-soft:#1E3325; --warn:#F08A64;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111612; --surface:#1A211C; --ink:#E6EDE7; --muted:#9BAA9F; --line:#2C3830;
+  --accent:#7CC490; --accent-ink:#0F1A12; --accent-soft:#1E3325;
+  --kids:#F08DB1; --kids-soft:#3A2030; --budget:#E9B949; --budget-soft:#352A12;
+  --quick:#86B5EE; --quick-soft:#1C2A3D; --prep:#7CC490; --prep-soft:#1E3325; --warn:#F08A64;
+  color-scheme:dark}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.5}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+.app{max-width:980px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px}
+h1,h2,h3{font-family:var(--display);font-weight:400;margin:0;text-wrap:balance}
+h1{font-size:2rem;line-height:1.1}
+h2{font-size:1.35rem}
+h3{font-size:1.1rem}
+.top{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:end;justify-content:space-between}
+.sub{color:var(--muted);margin:4px 0 0}
+button,select,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px}
+.setup{margin-top:18px;display:grid;gap:14px}
+.label{font-size:.8rem;font-weight:700;color:var(--muted);letter-spacing:.02em}
+.modes{display:flex;flex-wrap:wrap;gap:8px}
+.mode{border:1.5px solid var(--line);background:var(--surface);border-radius:999px;padding:7px 14px;font-weight:600;display:flex;gap:6px;align-items:center}
+.mode .dot{width:9px;height:9px;border-radius:50%;background:var(--line)}
+.mode[aria-pressed="true"]{border-color:currentColor}
+.mode[data-m="kids"][aria-pressed="true"]{color:var(--kids);background:var(--kids-soft)}
+.mode[data-m="budget"][aria-pressed="true"]{color:var(--budget);background:var(--budget-soft)}
+.mode[data-m="prep"][aria-pressed="true"]{color:var(--prep);background:var(--prep-soft)}
+.mode[data-m="quick"][aria-pressed="true"]{color:var(--quick);background:var(--quick-soft)}
+.mode[aria-pressed="true"] .dot{background:currentColor}
+.controls{display:flex;flex-wrap:wrap;gap:14px 24px;align-items:end}
+.field{display:grid;gap:4px}
+.stepper{display:flex;align-items:center;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--surface)}
+.stepper button{border:0;background:transparent;width:36px;height:36px;font-size:1.2rem}
+.stepper span{min-width:28px;text-align:center;font-weight:700;font-variant-numeric:tabular-nums}
+input[type=number],input[type=text],input[type=search],select,textarea{border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:7px 10px;min-height:36px}
+input[type=number]{width:110px}
+.primary{background:var(--accent);color:var(--accent-ink);border:0;border-radius:10px;padding:9px 18px;font-weight:700}
+.ghost{background:transparent;border:1px solid var(--line);border-radius:10px;padding:6px 12px;font-weight:600}
+.hint{font-size:.9rem;color:var(--muted)}
+.tabs{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);margin-top:18px;padding-block:10px;display:flex;gap:6px;overflow-x:auto;border-bottom:1px solid var(--line)}
+.tab{border:0;background:transparent;padding:8px 14px;border-radius:10px;font-weight:700;color:var(--muted);white-space:nowrap}
+.tab[aria-selected="true"]{background:var(--accent-soft);color:var(--accent)}
+.view{margin-top:18px}
+.summary{display:flex;flex-wrap:wrap;gap:10px 28px;align-items:center;margin-bottom:14px}
+.stat b{font-size:1.25rem;font-variant-numeric:tabular-nums}
+.bar{height:8px;border-radius:99px;background:var(--line);overflow:hidden;width:220px;max-width:100%}
+.bar i{display:block;height:100%;background:var(--accent);border-radius:99px}
+.bar.over i{background:var(--warn)}
+.week{display:grid;gap:8px}
+.day{display:grid;grid-template-columns:72px minmax(0,1fr) auto;gap:6px 14px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.dname{font-family:var(--display);font-size:1.05rem}
+.dname small{display:block;font-family:var(--body);font-size:.75rem;color:var(--muted)}
+.rname{font-weight:700;font-size:1.05rem}
+.meta{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:3px;font-size:.85rem;color:var(--muted)}
+.tag{font-size:.75rem;font-weight:700;border-radius:99px;padding:1px 8px}
+.t-kids{color:var(--kids);background:var(--kids-soft)}
+.t-budget{color:var(--budget);background:var(--budget-soft)}
+.t-quick{color:var(--quick);background:var(--quick-soft)}
+.t-prep{color:var(--prep);background:var(--prep-soft)}
+.note{font-size:.85rem;color:var(--muted);margin-top:4px}
+.note b{color:var(--kids)}
+.dact{display:flex;gap:6px;align-items:center}
+.dact select{max-width:170px}
+.empty{color:var(--muted);font-style:italic}
+.shop{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.aisle h3{margin-bottom:8px}
+.item{display:flex;gap:10px;align-items:center;padding:6px 0;border-top:1px solid var(--line)}
+.item:first-of-type{border-top:0}
+.item input{width:18px;height:18px;accent-color:var(--accent)}
+.item .q{margin-inline-start:auto;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.item.done span{text-decoration:line-through;color:var(--muted)}
+.recipes{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:12px}
+.rcard{display:grid;gap:6px;align-content:start}
+.rcard details summary{cursor:pointer;color:var(--accent);font-weight:600;font-size:.9rem}
+.rcard ul{margin:6px 0 0;padding-inline-start:18px;font-size:.9rem}
+.rfoot{display:flex;gap:8px;align-items:center;margin-top:4px}
+.filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:14px}
+.steps{display:grid;gap:12px}
+.step{display:grid;grid-template-columns:36px minmax(0,1fr);gap:12px}
+.num{width:32px;height:32px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font-weight:700}
+.step ul{margin:6px 0 0;padding-inline-start:18px}
+.addform{display:grid;gap:10px;margin-top:10px}
+.addform .row{display:flex;flex-wrap:wrap;gap:10px}
+.addform textarea{min-height:96px;width:100%;box-sizing:border-box}
+.cooks{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:12px}
+.cook{display:grid;gap:8px;align-content:start}
+.chead{display:flex;gap:12px;align-items:center}
+.avatar{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font-family:var(--display);font-size:1.2rem;background:var(--accent-soft);color:var(--accent);flex:none}
+.chead>div{min-width:0}
+.follow[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.sample{font-size:.7rem;font-weight:700;color:var(--muted);border:1px dashed var(--line);border-radius:99px;padding:0 7px}
+.feed{display:grid;gap:12px;margin-top:18px}
+.mini{margin:6px 0 0;padding:0;list-style:none;display:grid;gap:2px;font-size:.9rem}
+.mini b{display:inline-block;min-width:52px;color:var(--muted);font-weight:600}
+.rcard ol{margin:6px 0 0;padding-inline-start:20px;font-size:.9rem}
+.photos{display:grid;grid-template-columns:repeat(var(--n),minmax(0,1fr));gap:4px;margin:-4px -4px 4px}
+.photos img{width:100%;max-width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:8px;display:block}
+.photos[style*="--n:1"] img{aspect-ratio:16/9}
+.danger{color:var(--warn)}
+.addbox{margin-top:14px}
+.addbox summary{cursor:pointer}
+fieldset{border:0;margin:0;padding:0;min-width:0}
+.grow{flex:1;min-width:200px}
+.grow input{width:100%;box-sizing:border-box}
+.check{display:flex;gap:6px;align-items:center}
+.inghead,.ingrow{display:grid;grid-template-columns:minmax(0,2fr) 84px minmax(0,1fr) minmax(0,1.3fr) 36px;gap:6px;align-items:center}
+.inghead{font-size:.75rem;color:var(--muted);font-weight:700}
+.ingrow{margin-top:6px}
+.ingrow input,.ingrow select{width:100%;box-sizing:border-box;min-width:0}
+.icon{width:36px;height:36px;padding:0;font-size:1.1rem}
+.icon:disabled{opacity:.4;cursor:not-allowed}
+.err{color:var(--warn);font-size:.85rem;font-weight:600;margin:4px 0 0}
+[aria-invalid="true"]{border-color:var(--warn)!important;box-shadow:0 0 0 1px var(--warn)}
+.errsum{border:1.5px solid var(--warn);border-radius:10px;padding:10px 14px;color:var(--warn)}
+.errsum ul{margin:4px 0 0;padding-inline-start:18px;color:var(--ink)}
+.photogrid{display:flex;flex-wrap:wrap;gap:10px}
+.ptile{position:relative;margin:0;width:120px;height:96px;border-radius:10px;overflow:hidden;border:1px solid var(--line);background:var(--bg)}
+.ptile img{width:100%;height:100%;object-fit:cover;display:block}
+.pmain{position:absolute;inset-block-end:6px;inset-inline-start:6px;background:var(--accent);color:var(--accent-ink);font-size:.7rem;font-weight:700;border-radius:99px;padding:0 7px}
+.pdel{position:absolute;top:6px;inset-inline-end:6px;width:26px;height:26px;border-radius:50%;border:0;background:var(--ink);color:var(--bg);font-size:1rem;line-height:1}
+.padd{display:grid;place-items:center;align-content:center;gap:2px;border:1.5px dashed var(--line);cursor:pointer;text-align:center;color:var(--muted)}
+.padd span{font-size:1.6rem;line-height:1;color:var(--accent)}
+.padd:hover{border-color:var(--accent)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+#photoPrev:focus-within .padd{outline:2px solid var(--accent);outline-offset:2px}
+@media (max-width:620px){
+  .inghead{display:none}
+  .ingrow{grid-template-columns:minmax(0,1fr) 84px 36px;padding-block:8px;border-top:1px solid var(--line)}
+  .ingrow [data-f="n"]{grid-column:1;grid-row:1}
+  .ingrow [data-f="q"]{grid-column:2;grid-row:1}
+  .ingrow [data-rmrow]{grid-column:3;grid-row:1}
+  .ingrow [data-f="u"]{grid-column:1;grid-row:2}
+  .ingrow [data-f="a"]{grid-column:2/4;grid-row:2}
+}
+.toast{position:fixed;bottom:calc(16px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 16px;border-radius:10px;font-weight:600;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.on{opacity:1}
+@media (max-width:620px){
+  .day{grid-template-columns:56px minmax(0,1fr)}
+  .dact{grid-column:1/-1}
+  .dact select{max-width:none;flex:1}
+  h1{font-size:1.6rem}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+.topact{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.langs{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--surface)}
+.lang{border:0;background:transparent;padding:7px 12px;font-weight:600;color:var(--muted)}
+.lang[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent)}
+:lang(ru) h1,:lang(ru) h2,:lang(ru) h3,:lang(ru) .dname{font-weight:600}
+</style>
+
+<div class="app" id="app" dir="rtl" lang="he"></div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+const LANGS=[{k:'he',label:'עברית',dir:'rtl',loc:'he-IL'},{k:'en',label:'English',dir:'ltr',loc:'en-US'},{k:'ru',label:'Русский',dir:'ltr',loc:'ru-RU'}];
+const S={
+he:{app:'צלחת השבוע',tagline:'תכנון ארוחות ערב לשבוע, רשימת קניות אוטומטית ובישול מראש',autoplan:'תכננו לי שבוע',language:'שפה',
+ modesLabel:'מה חשוב אצלכם בבית? אפשר לבחור כמה',mode_kids:'ילדים בררנים',mode_budget:'תקציב נמוך',mode_prep:'מבשלים פעם בשבוע',mode_quick:'20 דקות בערב',
+ tag_kids:'לילדים',tag_budget:'זול',tag_quick:'עד 20 דק׳',tag_prep:'לבישול מראש',
+ diners:'סועדים',fewer:'פחות סועדים',more:'יותר סועדים',budgetLabel:'תקציב שבועי לארוחות ערב (₪)',modeHint:'ההעדפות השתנו. לחצו "תכננו לי שבוע" כדי לבנות תכנון חדש.',
+ tab_week:'השבוע',tab_shop:'רשימת קניות',tab_prep:'הבישול הגדול',tab_recipes:'מתכונים',tab_community:'קהילה',
+ weekCost:'עלות משוערת לשבוע',of:'מתוך {b}',budgetUse:'ניצול תקציב {p}%',overBudget:'מעל התקציב. נסו להחליף מנה יקרה במנה מסומנת "זול"',inBudget:'בתוך התקציב',
+ weeknight:'ערב חול',weekend:'סוף שבוע',min:'דק׳',unknownCost:'עלות לא ידועה',forKids:'לילדים:',prepNote:'מוכן מראש בבישול של יום ראשון · נשמר {k} ימים במקרר',
+ noDinner:'אין ארוחה מתוכננת',none:'ריק',swap:'החלף',swapAria:'החלפה אוטומטית ליום {d}',selectAria:'בחירת מנה ליום {d}',toastSwap:'{d}: {n}',planned:'נבנה תכנון חדש לשבוע',
+ shopEmpty:'אין מנות בתכנון. בחרו מנות בלשונית "השבוע" והרשימה תיבנה כאן.',itemsLeft:'פריטים שנשארו',estCost:'עלות משוערת',copyList:'העתקת הרשימה',clearChecks:'ניקוי סימונים',listTitle:'רשימת קניות – {app}',copied:'הרשימה הועתקה',copyFail:'לא הצלחנו להעתיק. סמנו את הרשימה והעתיקו ידנית',
+ prepEmpty:'אין בתכנון מנות לבישול מראש. החליפו מנה באחת המסומנות "לבישול מראש", או לחצו "תכננו לי שבוע".',prepDishes:'מנות לבישול ביום ראשון',kitchenTime:'זמן משוער במטבח',hours:'כ-{h} שעות',
+ step1:'חותכים הכל בבת אחת',step2:'מכניסים לתנור קודם',ovenHint:'התנור עובד לבד בזמן שמבשלים על הכיריים',step3:'על הכיריים, בזו אחר זו',step4:'מקררים ומחלקים לקופסאות',keepsUpTo:'עד {k} ימים במקרר',freezes:' · מתאים להקפאה',keeps:'נשמר {k} ימים במקרר',
+ all:'הכל',filterAria:'סינון מתכונים',search:'חיפוש מתכון',perServing:'{c} למנה',mine:'שלי',ingFor:'מצרכים ל-{n} סועדים',method:'אופן ההכנה',assign:'לשבץ ביום',choose:'בחירה',share:'שיתוף',del:'מחיקה',delConfirm:'למחוק? לחצו שוב',noMatch:'אין מתכונים שמתאימים לסינון.',photoAlt:'{n}, תמונה {i} מתוך {t}',addedTo:'נוסף ליום {d}',shareCopied:'המתכון הועתק. אפשר להדביק בוואטסאפ',deleted:'המתכון נמחק',saved:'המתכון נשמר',recipeHead:'{n} ({t} דק׳, ל-{s} סועדים)',fromApp:'מתוך {app}',
+ addTitle:'הוספת מתכון משלכם',fName:'שם המנה *',fTime:'זמן הכנה בדקות *',fTags:'למי זה מתאים',fKid:'איך מגישים לילדים',fKidPh:'למשל: הרוטב בצד',fIng:'מצרכים ל-4 סועדים * (לפחות 2)',colIng:'מצרך',colQty:'כמות',colUnit:'יחידה',colAisle:'מחלקה בסופר',ingPh:'למשל: בצל',ingNameAria:'שם המצרך {i}',qtyAria:'כמות למצרך {i}',unitAria:'יחידה למצרך {i}',aisleAria:'מחלקה למצרך {i}',rmIng:'הסרת מצרך {i}',addIng:'הוספת מצרך',fSteps:'אופן ההכנה * (שורה לכל שלב)',stepsPh:'מטגנים את הבצל עד שהוא שקוף\nמוסיפים את הרסק ומבשלים 10 דקות',fPhotos:'תמונות (עד {m})',photoHint:'JPG, PNG, WEBP או GIF, עד {mb}MB לתמונה. התמונה הראשונה תהיה התמונה הראשית.',mainPhoto:'ראשית',rmPhoto:'הסרת תמונה {i}',addPhoto:'הוספת תמונה',left:'נשארו {n}',photoN:'תמונה {i}',saveBtn:'שמירת המתכון',resetBtn:'ניקוי הטופס',
+ eNameReq:'כתבו שם למנה.',eNameShort:'השם קצר מדי. כתבו לפחות 2 תווים.',eNameDup:'כבר יש מתכון בשם הזה. בחרו שם אחר.',eTimeReq:'כתבו כמה דקות לוקחת ההכנה.',eTimeRange:'זמן ההכנה צריך להיות מספר שלם בין 5 ל-240 דקות.',eIngNoName:'במצרך {i} חסר שם.',eIngNoQty:'במצרך "{n}" חסרה כמות גדולה מאפס.',eIngMin:'הוסיפו לפחות 2 מצרכים עם שם וכמות.',eIngMax:'אפשר עד 30 מצרכים במתכון.',eStepsReq:'כתבו איך מכינים את המנה.',eStepsShort:'אופן ההכנה קצר מדי. כתבו לפחות משפט אחד מלא.',ePhotoMax:'אפשר להעלות עד {m} תמונות. "{f}" לא נוספה.',ePhotoType:'"{f}" אינה בפורמט נתמך. אפשר JPG, PNG, WEBP או GIF.',ePhotoSize:'"{f}" גדולה מ-{mb}MB. נסו תמונה קטנה יותר.',ePhotoRead:'לא הצלחנו לקרוא את "{f}". נסו תמונה אחרת.',errSum1:'יש שדה אחד שצריך לתקן:',errSumN:'יש {n} שדות שצריך לתקן:',eStorage:'<b>המתכון לא נשמר.</b> אין מספיק מקום בדפדפן בשביל התמונות. נסו להסיר תמונה אחת ולשמור שוב.',
+ youFollow:'אתם עוקבים אחרי',cooks:'בשלנים',sampleNote:'הפרופילים כאן הם דוגמה לאב-טיפוס',sample:'דוגמה',followers:'{n} עוקבים',follow:'מעקב',following:'במעקב',feedTitle:'מהבשלנים שלכם',feedEmpty:'עדיין לא עוקבים אחרי אף אחד. לחצו "מעקב" על בשלן כדי לראות את התכנון השבועי והמתכונים שלו.',planOf:'התכנון השבועי של {n}',copyPlan:'העתקה לשבוע שלי',sharedRecipes:'מתכונים ששיתף',planCopied:'התכנון של {n} הועתק לשבוע שלכם',copyFailShort:'לא הצלחנו להעתיק'},
+en:{app:'Weekly Plate',tagline:'Plan a week of dinners, get the shopping list, cook ahead',autoplan:'Plan my week',language:'Language',
+ modesLabel:'What matters in your home? Pick any',mode_kids:'Picky kids',mode_budget:'Tight budget',mode_prep:'Cook once a week',mode_quick:'20 minutes a night',
+ tag_kids:'Kid-friendly',tag_budget:'Budget',tag_quick:'Under 20 min',tag_prep:'Meal prep',
+ diners:'People',fewer:'Fewer people',more:'More people',budgetLabel:'Weekly dinner budget (₪)',modeHint:'Your preferences changed. Tap “Plan my week” to rebuild the plan.',
+ tab_week:'This week',tab_shop:'Shopping list',tab_prep:'Big cook',tab_recipes:'Recipes',tab_community:'Community',
+ weekCost:'Estimated cost this week',of:'of {b}',budgetUse:'Budget used {p}%',overBudget:'Over budget. Try swapping a pricey dish for one marked “Budget”',inBudget:'Within budget',
+ weeknight:'Weeknight',weekend:'Weekend',min:'min',unknownCost:'Cost unknown',forKids:'For kids:',prepNote:'Made ahead in the Sunday cook · keeps {k} days in the fridge',
+ noDinner:'No dinner planned',none:'None',swap:'Swap',swapAria:'Swap {d} automatically',selectAria:'Choose a dish for {d}',toastSwap:'{d}: {n}',planned:'New weekly plan ready',
+ shopEmpty:'No dishes planned yet. Pick dishes in “This week” and the list builds itself here.',itemsLeft:'Items left',estCost:'Estimated cost',copyList:'Copy list',clearChecks:'Clear checks',listTitle:'Shopping list – {app}',copied:'List copied',copyFail:'Couldn’t copy. Select the list and copy it manually',
+ prepEmpty:'No make-ahead dishes in the plan. Swap in one marked “Meal prep”, or tap “Plan my week”.',prepDishes:'Dishes to cook on Sunday',kitchenTime:'Estimated kitchen time',hours:'about {h} hours',
+ step1:'Chop everything at once',step2:'Oven dishes go in first',ovenHint:'The oven works on its own while you cook on the stove',step3:'On the stove, one after another',step4:'Cool and pack into containers',keepsUpTo:'up to {k} days in the fridge',freezes:' · freezer-friendly',keeps:'Keeps {k} days in the fridge',
+ all:'All',filterAria:'Filter recipes',search:'Search recipes',perServing:'{c} per serving',mine:'Mine',ingFor:'Ingredients for {n}',method:'Method',assign:'Add to',choose:'Choose',share:'Share',del:'Delete',delConfirm:'Delete? Tap again',noMatch:'No recipes match this filter.',photoAlt:'{n}, photo {i} of {t}',addedTo:'Added to {d}',shareCopied:'Recipe copied. Paste it into WhatsApp',deleted:'Recipe deleted',saved:'Recipe saved',recipeHead:'{n} ({t} min, serves {s})',fromApp:'From {app}',
+ addTitle:'Add your own recipe',fName:'Dish name *',fTime:'Prep time in minutes *',fTags:'Who is it for',fKid:'How to serve it to kids',fKidPh:'e.g. sauce on the side',fIng:'Ingredients for 4 * (at least 2)',colIng:'Ingredient',colQty:'Qty',colUnit:'Unit',colAisle:'Store aisle',ingPh:'e.g. onion',ingNameAria:'Ingredient {i} name',qtyAria:'Ingredient {i} quantity',unitAria:'Ingredient {i} unit',aisleAria:'Ingredient {i} aisle',rmIng:'Remove ingredient {i}',addIng:'Add ingredient',fSteps:'Method * (one step per line)',stepsPh:'Fry the onion until soft\nAdd the tomato paste and simmer for 10 minutes',fPhotos:'Photos (up to {m})',photoHint:'JPG, PNG, WEBP or GIF, up to {mb}MB each. The first photo is the main one.',mainPhoto:'Main',rmPhoto:'Remove photo {i}',addPhoto:'Add photo',left:'{n} left',photoN:'Photo {i}',saveBtn:'Save recipe',resetBtn:'Clear form',
+ eNameReq:'Enter a name for the dish.',eNameShort:'The name is too short. Use at least 2 characters.',eNameDup:'A recipe with this name already exists. Choose another name.',eTimeReq:'Enter how many minutes it takes.',eTimeRange:'Prep time must be a whole number from 5 to 240 minutes.',eIngNoName:'Ingredient {i} has no name.',eIngNoQty:'“{n}” needs a quantity greater than zero.',eIngMin:'Add at least 2 ingredients with a name and a quantity.',eIngMax:'A recipe can have up to 30 ingredients.',eStepsReq:'Describe how to make the dish.',eStepsShort:'The method is too short. Write at least one full sentence.',ePhotoMax:'You can add up to {m} photos. “{f}” was not added.',ePhotoType:'“{f}” isn’t a supported format. Use JPG, PNG, WEBP or GIF.',ePhotoSize:'“{f}” is larger than {mb}MB. Try a smaller photo.',ePhotoRead:'Couldn’t read “{f}”. Try another photo.',errSum1:'1 field needs fixing:',errSumN:'{n} fields need fixing:',eStorage:'<b>The recipe wasn’t saved.</b> There isn’t enough browser storage for the photos. Remove one photo and save again.',
+ youFollow:'You follow',cooks:'cooks',sampleNote:'These profiles are prototype examples',sample:'Example',followers:'{n} followers',follow:'Follow',following:'Following',feedTitle:'From cooks you follow',feedEmpty:'You don’t follow anyone yet. Tap “Follow” on a cook to see their weekly plan and recipes.',planOf:'{n}’s weekly plan',copyPlan:'Copy to my week',sharedRecipes:'Shared recipes',planCopied:'{n}’s plan copied to your week',copyFailShort:'Couldn’t copy'},
+ru:{app:'Тарелка недели',tagline:'Ужины на неделю, автоматический список покупок и готовка впрок',autoplan:'Составить меню',language:'Язык',
+ modesLabel:'Что важно в вашей семье? Можно выбрать несколько',mode_kids:'Привередливые дети',mode_budget:'Скромный бюджет',mode_prep:'Готовим раз в неделю',mode_quick:'20 минут вечером',
+ tag_kids:'Для детей',tag_budget:'Бюджетно',tag_quick:'До 20 мин',tag_prep:'Заготовка',
+ diners:'Едоков',fewer:'Меньше едоков',more:'Больше едоков',budgetLabel:'Бюджет на ужины в неделю (₪)',modeHint:'Предпочтения изменились. Нажмите «Составить меню», чтобы обновить план.',
+ tab_week:'Неделя',tab_shop:'Покупки',tab_prep:'Большая готовка',tab_recipes:'Рецепты',tab_community:'Сообщество',
+ weekCost:'Примерная стоимость недели',of:'из {b}',budgetUse:'Использовано бюджета {p}%',overBudget:'Бюджет превышен. Замените дорогое блюдо на отмеченное «Бюджетно»',inBudget:'В рамках бюджета',
+ weeknight:'Будний вечер',weekend:'Выходные',min:'мин',unknownCost:'Цена неизвестна',forKids:'Детям:',prepNote:'Готовится заранее в воскресенье · хранится {k} дн. в холодильнике',
+ noDinner:'Ужин не запланирован',none:'Пусто',swap:'Заменить',swapAria:'Автозамена: {d}',selectAria:'Блюдо на {d}',toastSwap:'{d}: {n}',planned:'Новое меню на неделю готово',
+ shopEmpty:'В плане пока нет блюд. Выберите блюда на вкладке «Неделя», и список появится здесь.',itemsLeft:'Осталось купить',estCost:'Примерная стоимость',copyList:'Скопировать список',clearChecks:'Снять отметки',listTitle:'Список покупок – {app}',copied:'Список скопирован',copyFail:'Не удалось скопировать. Выделите список и скопируйте вручную',
+ prepEmpty:'В плане нет блюд для заготовки. Замените блюдо на отмеченное «Заготовка» или нажмите «Составить меню».',prepDishes:'Блюд на воскресенье',kitchenTime:'Примерно на кухне',hours:'около {h} ч',
+ step1:'Нарезаем всё сразу',step2:'Сначала — в духовку',ovenHint:'Духовка работает сама, пока вы готовите на плите',step3:'На плите, по очереди',step4:'Остужаем и раскладываем по контейнерам',keepsUpTo:'до {k} дн. в холодильнике',freezes:' · можно заморозить',keeps:'Хранится {k} дн. в холодильнике',
+ all:'Все',filterAria:'Фильтр рецептов',search:'Поиск рецепта',perServing:'{c} за порцию',mine:'Мой',ingFor:'Ингредиенты на {n} чел.',method:'Приготовление',assign:'Добавить в',choose:'Выбрать',share:'Поделиться',del:'Удалить',delConfirm:'Удалить? Нажмите ещё раз',noMatch:'Нет рецептов по этому фильтру.',photoAlt:'{n}, фото {i} из {t}',addedTo:'Добавлено: {d}',shareCopied:'Рецепт скопирован. Можно вставить в WhatsApp',deleted:'Рецепт удалён',saved:'Рецепт сохранён',recipeHead:'{n} ({t} мин, на {s} чел.)',fromApp:'Из «{app}»',
+ addTitle:'Добавить свой рецепт',fName:'Название блюда *',fTime:'Время приготовления, мин *',fTags:'Кому подходит',fKid:'Как подать детям',fKidPh:'например: соус отдельно',fIng:'Ингредиенты на 4 чел. * (минимум 2)',colIng:'Ингредиент',colQty:'Кол-во',colUnit:'Ед.',colAisle:'Отдел',ingPh:'например: лук',ingNameAria:'Ингредиент {i}: название',qtyAria:'Ингредиент {i}: количество',unitAria:'Ингредиент {i}: единица',aisleAria:'Ингредиент {i}: отдел',rmIng:'Удалить ингредиент {i}',addIng:'Добавить ингредиент',fSteps:'Приготовление * (каждый шаг с новой строки)',stepsPh:'Обжарить лук до прозрачности\nДобавить томатную пасту и тушить 10 минут',fPhotos:'Фото (до {m})',photoHint:'JPG, PNG, WEBP или GIF, до {mb} МБ каждое. Первое фото — главное.',mainPhoto:'Главное',rmPhoto:'Удалить фото {i}',addPhoto:'Добавить фото',left:'Осталось {n}',photoN:'Фото {i}',saveBtn:'Сохранить рецепт',resetBtn:'Очистить форму',
+ eNameReq:'Введите название блюда.',eNameShort:'Слишком короткое название. Минимум 2 символа.',eNameDup:'Рецепт с таким названием уже есть. Выберите другое.',eTimeReq:'Укажите время приготовления в минутах.',eTimeRange:'Время — целое число от 5 до 240 минут.',eIngNoName:'У ингредиента {i} нет названия.',eIngNoQty:'Для «{n}» укажите количество больше нуля.',eIngMin:'Добавьте минимум 2 ингредиента с названием и количеством.',eIngMax:'В рецепте может быть до 30 ингредиентов.',eStepsReq:'Опишите, как готовить блюдо.',eStepsShort:'Слишком коротко. Напишите хотя бы одно полное предложение.',ePhotoMax:'Можно добавить до {m} фото. «{f}» не добавлено.',ePhotoType:'«{f}» — неподдерживаемый формат. Подойдут JPG, PNG, WEBP или GIF.',ePhotoSize:'«{f}» больше {mb} МБ. Попробуйте фото поменьше.',ePhotoRead:'Не удалось прочитать «{f}». Попробуйте другое фото.',errSum1:'Нужно исправить 1 поле:',errSumN:'Нужно исправить полей: {n}',eStorage:'<b>Рецепт не сохранён.</b> В браузере не хватает места для фото. Удалите одно фото и сохраните снова.',
+ youFollow:'Вы подписаны на',cooks:'кулинаров',sampleNote:'Профили здесь — примеры для прототипа',sample:'Пример',followers:'{n} подписчиков',follow:'Подписаться',following:'Вы подписаны',feedTitle:'От ваших кулинаров',feedEmpty:'Вы пока ни на кого не подписаны. Нажмите «Подписаться», чтобы видеть меню и рецепты кулинара.',planOf:'Меню на неделю: {n}',copyPlan:'Скопировать в мою неделю',sharedRecipes:'Рецепты',planCopied:'Меню «{n}» скопировано в вашу неделю',copyFailShort:'Не удалось скопировать'}
+};
+const DAYS={he:['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'],en:['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'],ru:['Воскресенье','Понедельник','Вторник','Среда','Четверг','Пятница','Суббота']};
+const AISLES={he:{veg:'ירקות ופירות',dairy:'חלב וביצים',meat:'בשר ודגים',bread:'לחם ומאפים',frozen:'קפואים',pantry:'מזווה'},en:{veg:'Fruit & vegetables',dairy:'Dairy & eggs',meat:'Meat & fish',bread:'Bread & bakery',frozen:'Frozen',pantry:'Pantry'},ru:{veg:'Овощи и фрукты',dairy:'Молочное и яйца',meat:'Мясо и рыба',bread:'Хлеб и выпечка',frozen:'Заморозка',pantry:'Бакалея'}};
+const AISLE_ORDER=['veg','dairy','meat','bread','frozen','pantry'];
+const TAG_KEYS=['kids','budget','quick','prep'];
+const U='יח׳';
+const UNITS=[U,'גרם','ק״ג','מ״ל','כוס','כף','כפית','קופסה','שקית','ראש','כיכר'];
+const UNIT_T={en:{'יח׳':'pcs','גרם':'g','ק״ג':'kg','מ״ל':'ml','כוס':'cup','כף':'tbsp','כפית':'tsp','קופסה':'can','שקית':'bag','ראש':'head','כיכר':'loaf'},ru:{'יח׳':'шт.','גרם':'г','ק״ג':'кг','מ״ל':'мл','כוס':'стак.','כף':'ст. л.','כפית':'ч. л.','קופסה':'банка','שקית':'пакет','ראש':'головка','כיכר':'буханка'}};
+const ING={'ביצים':['eggs','яйца'],'עגבניות':['tomatoes','помидоры'],'בצל':['onion','лук'],'פלפל אדום':['red pepper','красный перец'],'רסק עגבניות':['tomato paste','томатная паста'],'לחם':['bread','хлеб'],'פסטה':['pasta','макароны'],'עדשים כתומות':['red lentils','красная чечевица'],'גבינה צהובה מגוררת':['grated cheese','тёртый сыр'],'שוקי עוף':['chicken drumsticks','куриные голени'],'תפוחי אדמה':['potatoes','картофель'],'שום':['garlic','чеснок'],'עוף טחון':['ground chicken','куриный фарш'],'פירורי לחם':['breadcrumbs','панировочные сухари'],'אורז':['rice','рис'],'חומוס':['chickpeas','нут'],'חלב קוקוס':['coconut milk','кокосовое молоко'],'בטטה':['sweet potato','батат'],'חזה עוף':['chicken breast','куриная грудка'],'נודלס':['noodles','лапша'],'ברוקולי קפוא':['frozen broccoli','замороженная брокколи'],'רוטב סויה':['soy sauce','соевый соус'],'טורטיות':['tortillas','тортильи'],'שעועית שחורה':['black beans','чёрная фасоль'],'תירס':['corn','кукуруза'],'גזר':['carrots','морковь'],'פילה סלמון':['salmon fillet','филе лосося'],'לימון':['lemon','лимон'],'שעועית ירוקה קפואה':['frozen green beans','замороженная стручковая фасоль'],'זוקיני':['zucchini','кабачки'],'קמח':['flour','мука'],'שמנת לבישול':['cooking cream','сливки для готовки'],'בקר טחון':['ground beef','говяжий фарш'],'מלפפונים':['cucumbers','огурцы'],'אפונה וגזר קפואים':['frozen peas and carrots','замороженный горошек с морковью'],'שעועית אדומה':['kidney beans','красная фасоль'],'קינואה':['quinoa','киноа']};
+// ingredient: [name (he key), qty for 4, unit (he key), aisle, price per unit ₪]
+const R=[
+ {id:'shak',name:{he:'שקשוקה עם לחם',en:'Shakshuka with bread',ru:'Шакшука с хлебом'},time:20,m:'stove',tags:['quick','budget','kids'],kid:{he:'ביצה עין לילדים בצד, בלי חריף',en:'Kids get a fried egg on the side, no chili',ru:'Детям — яичница отдельно, без острого'},ing:[['ביצים',8,U,'dairy',1.2],['עגבניות',6,U,'veg',1],['בצל',1,U,'veg',.8],['פלפל אדום',2,U,'veg',2.5],['רסק עגבניות',1,'קופסה','pantry',4],['לחם',1,'כיכר','bread',12]]},
+ {id:'pasta',name:{he:'פסטה ברוטב עגבניות ועדשים',en:'Pasta in tomato-lentil sauce',ru:'Паста в томатном соусе с чечевицей'},time:20,m:'stove',tags:['quick','budget','kids'],kid:{he:'העדשים נטחנות לתוך הרוטב ולא רואים אותן',en:'The lentils blend into the sauce, so nobody sees them',ru:'Чечевица перемалывается в соус, и её не видно'},keep:3,ing:[['פסטה',500,'גרם','pantry',.012],['עדשים כתומות',200,'גרם','pantry',.015],['רסק עגבניות',1,'קופסה','pantry',4],['בצל',1,U,'veg',.8],['גבינה צהובה מגוררת',100,'גרם','dairy',.06]]},
+ {id:'chicken',name:{he:'שוקי עוף בתנור עם תפוחי אדמה',en:'Roast chicken drumsticks with potatoes',ru:'Запечённые куриные голени с картофелем'},time:60,m:'oven',tags:['prep','kids'],kid:{he:'תפוחי האדמה נחתכים לצ׳יפס',en:'Cut the potatoes into fries',ru:'Картофель нарезать как картошку фри'},keep:4,freeze:true,ing:[['שוקי עוף',1200,'גרם','meat',.035],['תפוחי אדמה',1000,'גרם','veg',.005],['בצל',2,U,'veg',.8],['שום',1,'ראש','veg',3]]},
+ {id:'kofta',name:{he:'קציצות עוף ברוטב עגבניות',en:'Chicken meatballs in tomato sauce',ru:'Куриные тефтели в томатном соусе'},time:45,m:'stove',tags:['prep','kids'],kid:{he:'אפשר להגיש חלק מהקציצות בלי רוטב',en:'Serve some of the meatballs without sauce',ru:'Часть тефтелей можно подать без соуса'},keep:4,freeze:true,ing:[['עוף טחון',800,'גרם','meat',.05],['ביצים',1,U,'dairy',1.2],['פירורי לחם',100,'גרם','pantry',.02],['רסק עגבניות',1,'קופסה','pantry',4],['בצל',1,U,'veg',.8],['אורז',400,'גרם','pantry',.01]]},
+ {id:'curry',name:{he:'קארי חומוס ובטטה',en:'Chickpea and sweet potato curry',ru:'Карри с нутом и бататом'},time:30,m:'stove',tags:['prep','budget'],keep:4,freeze:true,ing:[['חומוס',2,'קופסה','pantry',5],['חלב קוקוס',1,'קופסה','pantry',8],['בטטה',2,U,'veg',3],['בצל',1,U,'veg',.8],['אורז',400,'גרם','pantry',.01]]},
+ {id:'stir',name:{he:'מוקפץ עוף ונודלס',en:'Chicken and noodle stir-fry',ru:'Жареная лапша с курицей'},time:20,m:'stove',tags:['quick'],ing:[['חזה עוף',600,'גרם','meat',.045],['נודלס',400,'גרם','pantry',.02],['ברוקולי קפוא',1,'שקית','frozen',12],['רוטב סויה',50,'מ״ל','pantry',.04]]},
+ {id:'quesa',name:{he:'קסדיה שעועית וגבינה',en:'Bean and cheese quesadillas',ru:'Кесадилья с фасолью и сыром'},time:15,m:'stove',tags:['quick','budget','kids'],kid:{he:'גרסה לילדים רק עם גבינה ותירס',en:'Kids’ version with just cheese and corn',ru:'Детский вариант — только сыр и кукуруза'},ing:[['טורטיות',8,U,'bread',1.5],['שעועית שחורה',2,'קופסה','pantry',5],['גבינה צהובה מגוררת',200,'גרם','dairy',.06],['תירס',1,'קופסה','pantry',5]]},
+ {id:'soup',name:{he:'מרק עדשים כתומות',en:'Red lentil soup',ru:'Суп из красной чечевицы'},time:40,m:'stove',tags:['prep','budget'],keep:5,freeze:true,ing:[['עדשים כתומות',300,'גרם','pantry',.015],['גזר',3,U,'veg',.8],['בצל',2,U,'veg',.8],['לחם',1,'כיכר','bread',12]]},
+ {id:'salmon',name:{he:'סלמון בתנור עם אורז',en:'Baked salmon with rice',ru:'Запечённый лосось с рисом'},time:25,m:'oven',tags:['quick'],ing:[['פילה סלמון',600,'גרם','meat',.12],['אורז',400,'גרם','pantry',.01],['לימון',1,U,'veg',1.5],['שעועית ירוקה קפואה',1,'שקית','frozen',10]]},
+ {id:'pie',name:{he:'פשטידת זוקיני וגבינה',en:'Zucchini and cheese bake',ru:'Запеканка из кабачков с сыром'},time:50,m:'oven',tags:['prep','kids','budget'],kid:{he:'הירק מגורר דק ונבלע בגבינה',en:'The zucchini is finely grated and disappears into the cheese',ru:'Кабачок мелко натёрт и растворяется в сыре'},keep:4,freeze:true,ing:[['ביצים',6,U,'dairy',1.2],['זוקיני',4,U,'veg',2],['קמח',150,'גרם','pantry',.005],['גבינה צהובה מגוררת',150,'גרם','dairy',.06],['שמנת לבישול',1,'קופסה','dairy',5]]},
+ {id:'bolo',name:{he:'ספגטי בולונז',en:'Spaghetti bolognese',ru:'Спагетти болоньезе'},time:35,m:'stove',tags:['prep','kids'],kid:{he:'הגזר מגורר לתוך הרוטב',en:'The carrot is grated into the sauce',ru:'Морковь натёрта прямо в соус'},keep:4,freeze:true,ing:[['בקר טחון',500,'גרם','meat',.08],['פסטה',500,'גרם','pantry',.012],['רסק עגבניות',1,'קופסה','pantry',4],['גזר',1,U,'veg',.8],['בצל',1,U,'veg',.8]]},
+ {id:'omelet',name:{he:'חביתה, סלט קצוץ וטוסט',en:'Omelette, chopped salad and toast',ru:'Омлет, салат и тосты'},time:10,m:'stove',tags:['quick','budget','kids'],kid:{he:'ירקות חתוכים למקלות במקום סלט',en:'Veggie sticks instead of salad',ru:'Овощные палочки вместо салата'},ing:[['ביצים',8,U,'dairy',1.2],['מלפפונים',4,U,'veg',1],['עגבניות',4,U,'veg',1],['לחם',1,'כיכר','bread',12]]},
+ {id:'fried',name:{he:'אורז מוקפץ עם ביצה וירקות',en:'Egg fried rice with vegetables',ru:'Жареный рис с яйцом и овощами'},time:20,m:'stove',tags:['quick','budget','kids'],kid:{he:'חלק בלי רוטב סויה',en:'Leave some without soy sauce',ru:'Часть — без соевого соуса'},ing:[['אורז',400,'גרם','pantry',.01],['ביצים',4,U,'dairy',1.2],['אפונה וגזר קפואים',1,'שקית','frozen',9],['רוטב סויה',40,'מ״ל','pantry',.04]]},
+ {id:'chili',name:{he:'צ׳ילי קון קרנה',en:'Chili con carne',ru:'Чили кон карне'},time:45,m:'stove',tags:['prep','budget'],keep:5,freeze:true,ing:[['בקר טחון',500,'גרם','meat',.08],['שעועית אדומה',2,'קופסה','pantry',5],['רסק עגבניות',1,'קופסה','pantry',4],['בצל',2,U,'veg',.8],['פלפל אדום',1,U,'veg',2.5],['אורז',400,'גרם','pantry',.01]]},
+ {id:'schnitzel',name:{he:'שניצל אפוי ופירה',en:'Baked schnitzel with mashed potatoes',ru:'Запечённый шницель с пюре'},time:40,m:'oven',tags:['kids'],kid:{he:'המנה שכמעט כל ילד אוכל',en:'The dish almost every kid will eat',ru:'Блюдо, которое ест почти каждый ребёнок'},ing:[['חזה עוף',800,'גרם','meat',.045],['פירורי לחם',150,'גרם','pantry',.02],['ביצים',2,U,'dairy',1.2],['תפוחי אדמה',1000,'גרם','veg',.005]]},
+ {id:'quinoa',name:{he:'סלט קינואה, בטטה וחומוס',en:'Quinoa, sweet potato and chickpea salad',ru:'Салат с киноа, бататом и нутом'},time:30,m:'oven',tags:['prep'],keep:4,ing:[['קינואה',300,'גרם','pantry',.04],['בטטה',2,U,'veg',3],['חומוס',1,'קופסה','pantry',5],['לימון',1,U,'veg',1.5]]}
+];
+// Example community profiles (prototype data, not real users)
+const COOKS=[
+ {id:'noa',name:{he:'נועה ב.',en:'Noa B.',ru:'Ноа Б.'},bio:{he:'אמא לשלושה, מבשלת פעם בשבוע ביום ראשון',en:'Mom of three, cooks once a week on Sunday',ru:'Мама троих детей, готовит раз в неделю по воскресеньям'},followers:1240,modes:['prep','kids'],plan:['chicken','bolo','pie','kofta','soup','schnitzel','shak'],recipes:['chicken','pie','kofta','bolo']},
+ {id:'amit',name:{he:'עמית ודנה',en:'Amit & Dana',ru:'Амит и Дана'},bio:{he:'זוג עובד, 20 דקות בערב ולא דקה יותר',en:'Working couple, 20 minutes a night and not a minute more',ru:'Работающая пара: 20 минут вечером и ни минутой больше'},followers:860,modes:['quick'],plan:['stir','omelet','quesa','fried','salmon','pasta','shak'],recipes:['stir','salmon','fried']},
+ {id:'yossi',name:{he:'יוסי מהסטודנטים',en:'Yossi the student',ru:'Йоси-студент'},bio:{he:'ארוחות ערב לשבוע ב-250 ₪',en:'A week of dinners for ₪250',ru:'Ужины на неделю за 250 ₪'},followers:2310,modes:['budget'],plan:['soup','pasta','curry','fried','chili','quesa','omelet'],recipes:['soup','curry','chili','quesa']}
+];
+
+const DEF={lang:'he',modes:{kids:true,budget:true,prep:true,quick:true},serv:4,budget:450,plan:null,checked:{},custom:[],following:['noa']};
+let state=load();
+let lang=LANGS.some(l=>l.k===state.lang)?state.lang:'he';
+let view='week',recFilter='all',recSearch='',modeChanged=false,pendingDel=null;
+
+function load(){try{const s=JSON.parse(localStorage.getItem('tzalachat-v1'));if(s&&s.modes)return Object.assign({},DEF,s);}catch(e){}return JSON.parse(JSON.stringify(DEF));}
+function save(){try{localStorage.setItem('tzalachat-v1',JSON.stringify(state));return true;}catch(e){return false;}}
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function t(k,v){let s=(S[lang]&&S[lang][k]!=null)?S[lang][k]:(S.he[k]!=null?S.he[k]:k);if(v)for(const x in v)s=s.split('{'+x+'}').join(v[x]);return s;}
+const L=x=>x==null?'':typeof x==='string'?x:(x[lang]||x.he);
+const loc=()=>LANGS.find(l=>l.k===lang).loc;
+const num=n=>Number(n).toLocaleString(loc());
+const day=d=>DAYS[lang][d];
+const aisle=a=>AISLES[lang][a];
+const tagL=k=>t('tag_'+k);
+const unitL=u=>lang==='he'?u:((UNIT_T[lang]||{})[u]||u);
+const ingL=n=>lang==='he'?n:(ING[n]?ING[n][lang==='en'?0:1]:n);
+const all=()=>R.concat(state.custom);
+const byId=id=>all().find(r=>r.id===id);
+const factor=()=>state.serv/4;
+const cost=(r,f=factor())=>r.ing.reduce((s,i)=>s+i[1]*i[4]*f,0);
+const hasPrice=r=>r.ing.some(i=>i[4]>0);
+const money=n=>'₪'+num(Math.round(n));
+function roundQ(q,u){if(u==='גרם')return Math.max(50,Math.round(q/50)*50);if(u==='מ״ל')return Math.max(10,Math.round(q/10)*10);if(['כוס','כף','כפית','ק״ג'].includes(u))return Math.round(q*2)/2||.5;return Math.ceil(q-1e-9);}
+function fmtQ(q,u){const r=roundQ(q,u);if(u==='גרם'&&r>=1000)return num(r/1000)+' '+unitL('ק״ג');return num(r)+' '+unitL(u);}
+const tagsHtml=r=>r.tags.map(k=>`<span class="tag t-${k}">${tagL(k)}</span>`).join('');
+function toast(msg){const el=$('#toast');el.textContent=msg;el.classList.add('on');clearTimeout(toast.h);toast.h=setTimeout(()=>el.classList.remove('on'),1800);}
+function copy(txt,ok,fail){try{navigator.clipboard.writeText(txt).then(()=>toast(ok),()=>toast(fail||t('copyFailShort')));}catch(err){toast(fail||t('copyFailShort'));}}
+
+/* ---------- planning ---------- */
+function score(r,d){
+  let s=Math.random()*1.5;const m=state.modes;
+  if(m.kids&&r.tags.includes('kids'))s+=2;
+  if(m.budget&&hasPrice(r)&&cost(r,1)/4<=12)s+=2;
+  if(m.quick&&d<=4){if(r.time<=20)s+=2.5;else if(r.time<=30)s+=1;else s-=1.5;}
+  if(m.prep&&r.tags.includes('prep'))s+=(d<=3?2:1);
+  return s;
+}
+function autoPlan(){
+  const used=new Set();state.plan=[];
+  for(let d=0;d<7;d++){let best=null,bs=-1e9;all().forEach(r=>{if(used.has(r.id))return;const s=score(r,d);if(s>bs){bs=s;best=r;}});state.plan.push(best?best.id:null);if(best)used.add(best.id);}
+  state.checked={};save();
+}
+function swapDay(d){
+  const used=new Set(state.plan);let best=null,bs=-1e9;
+  all().forEach(r=>{if(used.has(r.id))return;const s=score(r,d);if(s>bs){bs=s;best=r;}});
+  if(best){state.plan[d]=best.id;save();render();toast(t('toastSwap',{d:day(d),n:L(best.name)}));}
+}
+const planned=()=>(state.plan||[]).map(byId).filter(Boolean);
+const weekCost=()=>planned().reduce((s,r)=>s+cost(r),0);
+
+/* ---------- shell ---------- */
+function renderShell(){
+  const cur=LANGS.find(l=>l.k===lang);
+  const app=$('#app');app.dir=cur.dir;app.lang=lang;$('#toast').dir=cur.dir;
+  try{document.documentElement.lang=lang;}catch(e){}
+  app.innerHTML=`<header class="top">
+    <div><h1>${t('app')}</h1><p class="sub">${t('tagline')}</p></div>
+    <div class="topact">
+      <div class="langs" role="group" aria-label="${t('language')}">${LANGS.map(l=>`<button class="lang" data-lang="${l.k}" lang="${l.k}" aria-pressed="${l.k===lang}">${l.label}</button>`).join('')}</div>
+      <button class="primary" id="autoplan">${t('autoplan')}</button>
+    </div>
+  </header>
+  <section class="panel setup" aria-label="${t('modesLabel')}">
+    <div class="field"><span class="label">${t('modesLabel')}</span>
+      <div class="modes">${TAG_KEYS.map(k=>`<button class="mode" data-m="${k}" aria-pressed="${!!state.modes[k]}"><span class="dot"></span>${t('mode_'+k)}</button>`).join('')}</div>
+    </div>
+    <div class="controls">
+      <div class="field"><span class="label">${t('diners')}</span>
+        <div class="stepper"><button id="servDown" aria-label="${t('fewer')}">−</button><span id="serv">${state.serv}</span><button id="servUp" aria-label="${t('more')}">+</button></div></div>
+      <div class="field"><label class="label" for="budget">${t('budgetLabel')}</label><input type="number" id="budget" min="0" step="10" value="${state.budget}"></div>
+      <p class="hint" id="modeHint"${modeChanged?'':' hidden'}>${t('modeHint')}</p>
+    </div>
+  </section>
+  <nav class="tabs" role="tablist">${['week','shop','prep','recipes','community'].map(v=>`<button class="tab" role="tab" data-v="${v}" aria-selected="false"${v==='prep'?' id="prepTab"':''}>${t('tab_'+v)}</button>`).join('')}</nav>
+  <section class="view" id="v-week"></section>
+  <section class="view" id="v-shop" hidden></section>
+  <section class="view" id="v-prep" hidden></section>
+  <section class="view" id="v-recipes" hidden><div id="recList"></div><div id="addWrap"></div></section>
+  <section class="view" id="v-community" hidden></section>`;
+}
+
+/* ---------- views ---------- */
+function renderWeek(){
+  const total=weekCost(),pct=state.budget?Math.min(100,total/state.budget*100):0,over=state.budget&&total>state.budget;
+  const opts=id=>`<option value="">${t('none')}</option>`+all().map(r=>`<option value="${r.id}"${r.id===id?' selected':''}>${esc(L(r.name))}</option>`).join('');
+  let html=`<div class="summary">
+    <div class="stat"><span class="label">${t('weekCost')}</span><br><b>${money(total)}</b> <span class="hint">${t('of',{b:money(state.budget)})}</span></div>
+    <div class="bar${over?' over':''}" role="img" aria-label="${t('budgetUse',{p:Math.round(pct)})}"><i style="width:${pct}%"></i></div>
+    <span class="hint">${over?t('overBudget'):t('inBudget')}</span></div><div class="week">`;
+  state.plan.forEach((id,d)=>{
+    const r=byId(id);
+    html+=`<article class="day"><div class="dname">${day(d)}<small>${d<=4?t('weeknight'):t('weekend')}</small></div><div>`;
+    if(r){
+      html+=`<div class="rname">${esc(L(r.name))}</div><div class="meta"><span>${r.time} ${t('min')}</span><span>·</span><span>${hasPrice(r)?money(cost(r)):t('unknownCost')}</span>${tagsHtml(r)}</div>`;
+      if(state.modes.kids&&r.kid)html+=`<div class="note"><b>${t('forKids')}</b> ${esc(L(r.kid))}</div>`;
+      if(state.modes.prep&&r.tags.includes('prep'))html+=`<div class="note">${t('prepNote',{k:r.keep||3})}</div>`;
+    }else html+=`<div class="empty">${t('noDinner')}</div>`;
+    html+=`</div><div class="dact"><label for="sel${d}" hidden>${t('selectAria',{d:day(d)})}</label><select id="sel${d}" data-day="${d}">${opts(id)}</select><button class="ghost" data-swap="${d}" aria-label="${t('swapAria',{d:day(d)})}">${t('swap')}</button></div></article>`;
+  });
+  $('#v-week').innerHTML=html+'</div>';
+}
+function shoppingList(){
+  const map={},f=factor();
+  planned().forEach(r=>r.ing.forEach(([n,q,u,a,p])=>{const k=n+'|'+u;if(!map[k])map[k]={n,u,a,p,q:0};map[k].q+=q*f;}));
+  return Object.values(map);
+}
+function renderShop(){
+  const items=shoppingList();
+  if(!items.length){$('#v-shop').innerHTML=`<p class="empty">${t('shopEmpty')}</p>`;return;}
+  const left=items.filter(i=>!state.checked[i.n+'|'+i.u]).length;
+  let html=`<div class="summary"><div class="stat"><span class="label">${t('itemsLeft')}</span><br><b>${num(left)}</b> <span class="hint">${t('of',{b:num(items.length)})}</span></div><div class="stat"><span class="label">${t('estCost')}</span><br><b>${money(weekCost())}</b></div><button class="ghost" id="copyList">${t('copyList')}</button><button class="ghost" id="clearChecks">${t('clearChecks')}</button></div><div class="shop">`;
+  AISLE_ORDER.forEach(a=>{
+    const list=items.filter(i=>i.a===a).sort((x,y)=>ingL(x.n).localeCompare(ingL(y.n),loc()));if(!list.length)return;
+    html+=`<div class="panel aisle"><h3>${aisle(a)}</h3>`+list.map((i,idx)=>{const k=i.n+'|'+i.u,done=!!state.checked[k],cid='c-'+a+idx;
+      return `<label class="item${done?' done':''}" for="${cid}"><input type="checkbox" id="${cid}" data-key="${esc(k)}"${done?' checked':''}><span>${esc(ingL(i.n))}</span><span class="q">${fmtQ(i.q,i.u)}</span></label>`;}).join('')+'</div>';
+  });
+  $('#v-shop').innerHTML=html+'</div>';
+}
+function listText(){
+  const items=shoppingList();let s=t('listTitle',{app:t('app')})+'\n';
+  AISLE_ORDER.forEach(a=>{const l=items.filter(i=>i.a===a);if(!l.length)return;s+='\n'+aisle(a)+'\n'+l.map(i=>'• '+ingL(i.n)+' – '+fmtQ(i.q,i.u)).join('\n')+'\n';});
+  return s;
+}
+function renderPrep(){
+  const rs=[...new Set(planned().filter(r=>r.tags.includes('prep')))];
+  if(!rs.length){$('#v-prep').innerHTML=`<p class="empty">${t('prepEmpty')}</p>`;return;}
+  const f=factor(),chop={};
+  rs.forEach(r=>r.ing.forEach(([n,q,u,a])=>{if(a==='veg'){const k=n+'|'+u;chop[k]=chop[k]||{n,u,q:0};chop[k].q+=q*f;}}));
+  const oven=rs.filter(r=>r.m==='oven'),stove=rs.filter(r=>r.m!=='oven');
+  const mins=Math.max(0,...oven.map(r=>r.time))+stove.reduce((s,r)=>s+r.time*.7,0)+20;
+  const hours=Math.round(mins/30)/2;
+  const li=r=>`<li>${esc(L(r.name))} <span class="hint">(${r.time} ${t('min')})</span></li>`;
+  const chopList=Object.values(chop);
+  let n=0;
+  $('#v-prep').innerHTML=`<div class="summary"><div class="stat"><span class="label">${t('prepDishes')}</span><br><b>${num(rs.length)}</b></div><div class="stat"><span class="label">${t('kitchenTime')}</span><br><b>${t('hours',{h:num(hours)})}</b></div></div>
+  <div class="panel steps">
+   ${chopList.length?`<div class="step"><span class="num">${++n}</span><div><h3>${t('step1')}</h3><ul>${chopList.map(c=>`<li>${esc(ingL(c.n))}: ${fmtQ(c.q,c.u)}</li>`).join('')}</ul></div></div>`:''}
+   ${oven.length?`<div class="step"><span class="num">${++n}</span><div><h3>${t('step2')}</h3><p class="hint">${t('ovenHint')}</p><ul>${oven.map(li).join('')}</ul></div></div>`:''}
+   ${stove.length?`<div class="step"><span class="num">${++n}</span><div><h3>${t('step3')}</h3><ul>${stove.map(li).join('')}</ul></div></div>`:''}
+   <div class="step"><span class="num">${++n}</span><div><h3>${t('step4')}</h3><ul>${rs.map(r=>`<li>${esc(L(r.name))}: ${t('keepsUpTo',{k:r.keep||3})}${r.freeze?t('freezes'):''}</li>`).join('')}</ul></div></div>
+  </div>`;
+}
+function renderRecipes(){
+  const chips=[['all',t('all')],...TAG_KEYS.map(k=>[k,tagL(k)])];
+  const q=recSearch.toLowerCase();
+  const list=all().filter(r=>(recFilter==='all'||r.tags.includes(recFilter))&&(!q||L(r.name).toLowerCase().includes(q)));
+  let html=`<div class="filters" role="group" aria-label="${t('filterAria')}">${chips.map(([k,l])=>`<button class="ghost" data-filter="${k}" aria-pressed="${recFilter===k}" style="${recFilter===k?'border-color:var(--accent);color:var(--accent)':''}">${l}</button>`).join('')}
+   <label for="rsearch" hidden>${t('search')}</label><input type="search" id="rsearch" placeholder="${t('search')}" value="${esc(recSearch)}"></div><div class="recipes">`;
+  html+=list.map(r=>{
+    const ph=r.photos||[],nm=L(r.name);
+    const steps=(r.steps||'').split('\n').map(s=>s.trim()).filter(Boolean);
+    return `<article class="panel rcard">
+    ${ph.length?`<div class="photos" style="--n:${ph.length}">${ph.map((p,i)=>`<img src="${p}" alt="${esc(t('photoAlt',{n:nm,i:i+1,t:ph.length}))}">`).join('')}</div>`:''}
+    <h3>${esc(nm)}${r.custom?` <span class="sample">${t('mine')}</span>`:''}</h3><div class="meta"><span>${r.time} ${t('min')}</span><span>·</span><span>${hasPrice(r)?t('perServing',{c:money(cost(r)/state.serv)}):t('unknownCost')}</span></div>${r.tags.length?`<div class="meta">${tagsHtml(r)}</div>`:''}
+    ${r.kid?`<div class="note"><b>${t('forKids')}</b> ${esc(L(r.kid))}</div>`:''}${r.keep?`<div class="note">${t('keeps',{k:r.keep})}${r.freeze?t('freezes'):''}</div>`:''}
+    <details><summary>${t('ingFor',{n:state.serv})}</summary><ul>${r.ing.map(([n,qq,u])=>`<li>${esc(ingL(n))} – ${fmtQ(qq*factor(),u)}</li>`).join('')}</ul></details>
+    ${steps.length?`<details><summary>${t('method')}</summary><ol>${steps.map(s=>`<li>${esc(s)}</li>`).join('')}</ol></details>`:''}
+    <div class="rfoot"><label class="hint" for="add-${r.id}">${t('assign')}</label><select id="add-${r.id}" data-assign="${r.id}"><option value="">${t('choose')}</option>${DAYS[lang].map((d,i)=>`<option value="${i}">${d}</option>`).join('')}</select><button class="ghost" data-share="${r.id}">${t('share')}</button>${r.custom?`<button class="ghost danger" data-del="${r.id}">${pendingDel===r.id?t('delConfirm'):t('del')}</button>`:''}</div></article>`;}).join('')||`<p class="empty">${t('noMatch')}</p>`;
+  $('#recList').innerHTML=html+'</div>';
+}
+function recipeText(r){return t('recipeHead',{n:L(r.name),t:r.time,s:state.serv})+'\n'+r.ing.map(([n,q,u])=>'• '+ingL(n)+' – '+fmtQ(q*factor(),u)).join('\n')+(r.kid?'\n'+t('forKids')+' '+L(r.kid):'')+(r.steps?'\n\n'+r.steps:'')+'\n\n'+t('fromApp',{app:t('app')});}
+function renderCommunity(){
+  const fol=state.following||[];
+  let html=`<div class="summary"><div class="stat"><span class="label">${t('youFollow')}</span><br><b>${num(fol.length)}</b> <span class="hint">${t('cooks')}</span></div><span class="hint">${t('sampleNote')}</span></div><div class="cooks">`;
+  html+=COOKS.map(c=>{const on=fol.includes(c.id),nm=L(c.name);return `<article class="panel cook"><div class="chead"><span class="avatar" aria-hidden="true">${esc(nm[0])}</span><div><h3>${esc(nm)} <span class="sample">${t('sample')}</span></h3><div class="hint">${t('followers',{n:num(c.followers)})}</div></div></div><p class="hint" style="margin:0">${esc(L(c.bio))}</p><div class="meta">${c.modes.map(k=>`<span class="tag t-${k}">${tagL(k)}</span>`).join('')}</div><div><button class="ghost follow" data-follow="${c.id}" aria-pressed="${on}">${on?t('following'):t('follow')}</button></div></article>`;}).join('');
+  html+=`</div><div class="feed"><h2>${t('feedTitle')}</h2>`;
+  const fc=COOKS.filter(c=>fol.includes(c.id));
+  if(!fc.length)html+=`<p class="empty">${t('feedEmpty')}</p>`;
+  fc.forEach(c=>{
+    html+=`<article class="panel"><h3>${esc(t('planOf',{n:L(c.name)}))}</h3><ul class="mini">${c.plan.map((id,d)=>`<li><b>${day(d)}</b>${esc(L(byId(id).name))}</li>`).join('')}</ul>
+     <div class="rfoot" style="margin-top:10px"><button class="primary" data-copyplan="${c.id}">${t('copyPlan')}</button></div>
+     <h3 style="margin-top:14px">${t('sharedRecipes')}</h3><div class="meta">${c.recipes.map(id=>`<button class="ghost" data-share="${id}">${esc(L(byId(id).name))}</button>`).join('')}</div></article>`;
+  });
+  $('#v-community').innerHTML=html+'</div>';
+}
+
+/* ---------- add recipe form ---------- */
+const MAX_PHOTOS=3,MAX_MB=10,OK_TYPES=['image/jpeg','image/png','image/webp','image/gif'];
+const blankRow=()=>({n:'',q:'',u:U,a:'veg'});
+let draft={ing:[blankRow(),blankRow(),blankRow()],photos:[],fields:{name:'',time:'30',steps:'',kid:'',tags:[]},open:false};
+function captureFields(){
+  if(!$('#addForm'))return;
+  draft.fields={name:$('#nName').value,time:$('#nTime').value,steps:$('#nSteps').value,kid:$('#nKid').value,tags:TAG_KEYS.filter(k=>$('#nt-'+k).checked)};
+  draft.open=$('#addBox').open;
+}
+function renderAddForm(){
+  const f=draft.fields;
+  $('#addWrap').innerHTML=`<details class="panel addbox" id="addBox"${draft.open?' open':''}><summary><b>${t('addTitle')}</b></summary>
+   <form class="addform" id="addForm" novalidate>
+    <div class="errsum" id="errSum" role="alert" tabindex="-1" hidden></div>
+    <div class="row">
+     <div class="field grow"><label class="label" for="nName">${t('fName')}</label><input type="text" id="nName" maxlength="60" value="${esc(f.name)}" aria-describedby="e-name"><p class="err" id="e-name" hidden></p></div>
+     <div class="field"><label class="label" for="nTime">${t('fTime')}</label><input type="number" id="nTime" min="5" max="240" step="5" value="${esc(f.time)}" aria-describedby="e-time"><p class="err" id="e-time" hidden></p></div>
+    </div>
+    <fieldset class="field"><legend class="label">${t('fTags')}</legend><div class="row">${TAG_KEYS.map(k=>`<label class="check"><input type="checkbox" id="nt-${k}" value="${k}"${f.tags.includes(k)?' checked':''}> ${tagL(k)}</label>`).join('')}</div></fieldset>
+    <div class="field" id="kidField"${f.tags.includes('kids')?'':' hidden'}><label class="label" for="nKid">${t('fKid')}</label><input type="text" id="nKid" maxlength="100" value="${esc(f.kid)}" placeholder="${t('fKidPh')}"></div>
+    <fieldset class="field"><legend class="label">${t('fIng')}</legend>
+     <div class="inghead" aria-hidden="true"><span>${t('colIng')}</span><span>${t('colQty')}</span><span>${t('colUnit')}</span><span>${t('colAisle')}</span><span></span></div>
+     <div id="ingRows"></div>
+     <p class="err" id="e-ing" hidden></p>
+     <div><button type="button" class="ghost" id="addIng">${t('addIng')}</button></div>
+    </fieldset>
+    <div class="field"><label class="label" for="nSteps">${t('fSteps')}</label><textarea id="nSteps" maxlength="3000" placeholder="${esc(t('stepsPh')).replace(/\n/g,'&#10;')}" aria-describedby="e-steps">${esc(f.steps)}</textarea><p class="err" id="e-steps" hidden></p></div>
+    <div class="field"><span class="label" id="photoLbl">${t('fPhotos',{m:MAX_PHOTOS})}</span>
+     <div class="photogrid" id="photoPrev"></div>
+     <p class="hint" id="photoHint">${t('photoHint',{mb:MAX_MB})}</p>
+     <p class="err" id="e-photo" hidden></p>
+    </div>
+    <div class="row"><button class="primary" type="submit">${t('saveBtn')}</button><button class="ghost" type="button" id="resetForm">${t('resetBtn')}</button></div>
+   </form></details>`;
+  renderIngRows();renderPhotos();
+}
+function renderIngRows(){
+  const aisleOpts=a=>AISLE_ORDER.map(k=>`<option value="${k}"${k===a?' selected':''}>${aisle(k)}</option>`).join('');
+  $('#ingRows').innerHTML=draft.ing.map((r,i)=>`<div class="ingrow" data-i="${i}">
+    <input type="text" id="ing-n-${i}" data-f="n" aria-label="${t('ingNameAria',{i:i+1})}" maxlength="40" value="${esc(r.n)}" placeholder="${t('ingPh')}">
+    <input type="number" id="ing-q-${i}" data-f="q" aria-label="${t('qtyAria',{i:i+1})}" min="0" step="any" value="${esc(r.q)}">
+    <select id="ing-u-${i}" data-f="u" aria-label="${t('unitAria',{i:i+1})}">${UNITS.map(u=>`<option value="${u}"${u===r.u?' selected':''}>${unitL(u)}</option>`).join('')}</select>
+    <select id="ing-a-${i}" data-f="a" aria-label="${t('aisleAria',{i:i+1})}">${aisleOpts(r.a)}</select>
+    <button type="button" class="ghost icon" data-rmrow="${i}" aria-label="${t('rmIng',{i:i+1})}"${draft.ing.length<=1?' disabled':''}>×</button>
+   </div>`).join('');
+}
+function renderPhotos(){
+  const tiles=draft.photos.map((p,i)=>`<figure class="ptile"><img src="${p}" alt="${t('photoN',{i:i+1})}">${i===0?`<span class="pmain">${t('mainPhoto')}</span>`:''}<button type="button" class="pdel" data-rmphoto="${i}" aria-label="${t('rmPhoto',{i:i+1})}">×</button></figure>`).join('');
+  const left=MAX_PHOTOS-draft.photos.length;
+  const add=left>0?`<label class="ptile padd" for="nPhotos"><span>+</span><small>${t('addPhoto')}<br>${t('left',{n:left})}</small></label><input type="file" id="nPhotos" accept="image/jpeg,image/png,image/webp,image/gif" multiple class="sr" aria-labelledby="photoLbl" aria-describedby="photoHint e-photo">`:'';
+  $('#photoPrev').innerHTML=tiles+add;
+}
+function shrink(file){return new Promise((res,rej)=>{const fr=new FileReader();fr.onerror=()=>rej(fr.error);fr.onload=()=>{const img=new Image();img.onerror=()=>rej(new Error('decode'));img.onload=()=>{const s=Math.min(1,900/Math.max(img.width,img.height));const c=document.createElement('canvas');c.width=Math.round(img.width*s);c.height=Math.round(img.height*s);c.getContext('2d').drawImage(img,0,0,c.width,c.height);res(c.toDataURL('image/jpeg',.72));};img.src=fr.result;};fr.readAsDataURL(file);});}
+async function addPhotos(files){
+  const errs=[];
+  for(const f of files){
+    if(draft.photos.length>=MAX_PHOTOS){errs.push(t('ePhotoMax',{m:MAX_PHOTOS,f:f.name}));continue;}
+    if(!OK_TYPES.includes(f.type)){errs.push(t('ePhotoType',{f:f.name}));continue;}
+    if(f.size>MAX_MB*1024*1024){errs.push(t('ePhotoSize',{f:f.name,mb:MAX_MB}));continue;}
+    try{draft.photos.push(await shrink(f));}catch(e){errs.push(t('ePhotoRead',{f:f.name}));}
+  }
+  renderPhotos();setErr('e-photo',errs.join(' '));
+}
+function setErr(id,msg,inputId){
+  const p=document.getElementById(id);if(!p)return;p.textContent=msg||'';p.hidden=!msg;
+  if(inputId){const el=document.getElementById(inputId);if(el)el.setAttribute('aria-invalid',msg?'true':'false');}
+}
+const allNames=r=>typeof r.name==='string'?[r.name]:Object.values(r.name);
+function validate(){
+  const errs=[];let first=null;const mark=(id,msg,inputId)=>{setErr(id,msg,inputId);if(msg){errs.push(msg);if(!first)first=inputId;}};
+  const name=$('#nName').value.trim();
+  mark('e-name',!name?t('eNameReq'):name.length<2?t('eNameShort'):all().some(r=>allNames(r).some(x=>x.toLowerCase()===name.toLowerCase()))?t('eNameDup'):'','nName');
+  const tv=$('#nTime').value.trim(),tn=Number(tv);
+  mark('e-time',!tv?t('eTimeReq'):!Number.isInteger(tn)||tn<5||tn>240?t('eTimeRange'):'','nTime');
+  document.querySelectorAll('.ingrow input').forEach(el=>el.setAttribute('aria-invalid','false'));
+  const full=draft.ing.filter(r=>r.n.trim()&&Number(r.q)>0);
+  const bad=draft.ing.findIndex(r=>(r.n.trim()&&!(Number(r.q)>0))||(!r.n.trim()&&r.q!==''));
+  let ingMsg='',ingFocus=null;
+  if(bad>=0){const r=draft.ing[bad];ingFocus=!r.n.trim()?`ing-n-${bad}`:`ing-q-${bad}`;ingMsg=!r.n.trim()?t('eIngNoName',{i:bad+1}):t('eIngNoQty',{n:r.n.trim()});}
+  else if(full.length<2){const e=draft.ing.findIndex(r=>!r.n.trim());ingMsg=t('eIngMin');ingFocus=`ing-n-${e<0?0:e}`;}
+  mark('e-ing',ingMsg,ingFocus);
+  const st=$('#nSteps').value.trim();
+  mark('e-steps',!st?t('eStepsReq'):st.length<15?t('eStepsShort'):'','nSteps');
+  const sum=$('#errSum');
+  if(errs.length){sum.innerHTML=`<b>${errs.length===1?t('errSum1'):t('errSumN',{n:errs.length})}</b><ul>${errs.map(e=>`<li>${esc(e)}</li>`).join('')}</ul>`;sum.hidden=false;const fe=first&&document.getElementById(first);(fe||sum).focus();}
+  else sum.hidden=true;
+  return errs.length?null:{name,time:tn,steps:st,ing:full};
+}
+function resetDraft(open){draft={ing:[blankRow(),blankRow(),blankRow()],photos:[],fields:{name:'',time:'30',steps:'',kid:'',tags:[]},open:!!open};renderAddForm();}
+
+/* ---------- render ---------- */
+function render(){
+  document.querySelectorAll('.mode').forEach(b=>b.setAttribute('aria-pressed',!!state.modes[b.dataset.m]));
+  $('#serv').textContent=state.serv;
+  $('#prepTab').hidden=!state.modes.prep;
+  $('#modeHint').hidden=!modeChanged;
+  if(view==='prep'&&!state.modes.prep)view='week';
+  document.querySelectorAll('.tab').forEach(x=>x.setAttribute('aria-selected',x.dataset.v===view));
+  ['week','shop','prep','recipes','community'].forEach(v=>$('#v-'+v).hidden=v!==view);
+  ({week:renderWeek,shop:renderShop,prep:renderPrep,recipes:renderRecipes,community:renderCommunity})[view]();
+}
+function setLang(l){captureFields();lang=l;state.lang=l;save();renderShell();renderAddForm();render();}
+
+/* ---------- events (delegated, so they survive re-renders) ---------- */
+document.addEventListener('click',e=>{
+  const g=e.target.closest.bind(e.target);
+  const lb=g('[data-lang]');if(lb){if(lb.dataset.lang!==lang)setLang(lb.dataset.lang);return;}
+  const md=g('.mode');if(md){state.modes[md.dataset.m]=!state.modes[md.dataset.m];modeChanged=true;save();render();return;}
+  if(g('#servUp')){state.serv=Math.min(12,state.serv+1);save();render();return;}
+  if(g('#servDown')){state.serv=Math.max(1,state.serv-1);save();render();return;}
+  if(g('#autoplan')){autoPlan();modeChanged=false;view='week';render();toast(t('planned'));return;}
+  const tb=g('.tab');if(tb){view=tb.dataset.v;render();return;}
+  const sw=g('[data-swap]');if(sw){swapDay(+sw.dataset.swap);return;}
+  const fl=g('[data-filter]');if(fl){recFilter=fl.dataset.filter;renderRecipes();return;}
+  const sh=g('[data-share]');if(sh){copy(recipeText(byId(sh.dataset.share)),t('shareCopied'));return;}
+  const fo=g('[data-follow]');if(fo){const id=fo.dataset.follow;state.following=state.following||[];const i=state.following.indexOf(id);if(i>=0)state.following.splice(i,1);else state.following.push(id);save();renderCommunity();return;}
+  const cp=g('[data-copyplan]');if(cp){const c=COOKS.find(x=>x.id===cp.dataset.copyplan);state.plan=c.plan.slice();state.checked={};save();view='week';render();toast(t('planCopied',{n:L(c.name)}));return;}
+  if(g('#clearChecks')){state.checked={};save();renderShop();return;}
+  if(g('#copyList')){copy(listText(),t('copied'),t('copyFail'));return;}
+  if(g('#addIng')){if(draft.ing.length>=30){setErr('e-ing',t('eIngMax'));return;}draft.ing.push(blankRow());renderIngRows();document.getElementById('ing-n-'+(draft.ing.length-1)).focus();return;}
+  const rr=g('[data-rmrow]');if(rr){draft.ing.splice(+rr.dataset.rmrow,1);renderIngRows();return;}
+  const rp=g('[data-rmphoto]');if(rp){draft.photos.splice(+rp.dataset.rmphoto,1);renderPhotos();setErr('e-photo','');return;}
+  if(g('#resetForm')){resetDraft(true);return;}
+  const dl=g('[data-del]');if(dl){const id=dl.dataset.del;
+    if(pendingDel!==id){pendingDel=id;renderRecipes();return;}
+    pendingDel=null;state.custom=state.custom.filter(r=>r.id!==id);state.plan=state.plan.map(p=>p===id?null:p);save();renderRecipes();toast(t('deleted'));}
+});
+document.addEventListener('change',e=>{
+  const el=e.target;
+  if(el.id==='budget'){state.budget=Math.max(0,+el.value||0);save();render();return;}
+  if(el.dataset.day!==undefined){state.plan[+el.dataset.day]=el.value||null;save();render();return;}
+  if(el.dataset.key){state.checked[el.dataset.key]=el.checked;save();renderShop();return;}
+  if(el.dataset.assign&&el.value!==''){state.plan[+el.value]=el.dataset.assign;save();toast(t('addedTo',{d:day(+el.value)}));renderRecipes();return;}
+  if(el.id==='nPhotos'){const files=[...el.files];el.value='';if(files.length)addPhotos(files);return;}
+  if(el.id==='nt-kids'){$('#kidField').hidden=!el.checked;}
+  const row=el.closest('.ingrow');if(row&&el.dataset.f){draft.ing[+row.dataset.i][el.dataset.f]=el.value;}
+});
+document.addEventListener('input',e=>{
+  const el=e.target;
+  if(el.id==='rsearch'){recSearch=el.value.trim();const pos=el.selectionStart;renderRecipes();const n=$('#rsearch');n.focus();n.setSelectionRange(pos,pos);return;}
+  const row=el.closest('.ingrow');
+  if(row&&el.dataset.f){draft.ing[+row.dataset.i][el.dataset.f]=el.value;el.setAttribute('aria-invalid','false');}
+  if(el.id==='nName')setErr('e-name','','nName');
+  if(el.id==='nTime')setErr('e-time','','nTime');
+  if(el.id==='nSteps')setErr('e-steps','','nSteps');
+});
+document.addEventListener('submit',e=>{
+  if(e.target.id!=='addForm')return;e.preventDefault();
+  const v=validate();if(!v)return;
+  const tags=TAG_KEYS.filter(k=>$('#nt-'+k).checked);
+  const kid=tags.includes('kids')?$('#nKid').value.trim():'';
+  const rec={id:'c'+Date.now(),name:v.name,time:v.time,m:'stove',tags,ing:v.ing.map(r=>[r.n.trim(),Number(r.q),r.u,r.a,0]),steps:v.steps,photos:draft.photos.slice(),keep:tags.includes('prep')?3:0,custom:true};
+  if(kid)rec.kid=kid;
+  state.custom.push(rec);
+  if(!save()){state.custom.pop();const sum=$('#errSum');sum.innerHTML=t('eStorage');sum.hidden=false;sum.focus();return;}
+  recFilter='all';recSearch='';renderRecipes();resetDraft(false);toast(t('saved'));
+});
+
+if(!state.plan||state.plan.length!==7)autoPlan();
+renderShell();renderAddForm();render();
+</script>
