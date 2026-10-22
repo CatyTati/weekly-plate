@@ -1,0 +1,23 @@
+{
+  "expo": {
+    "name": "Weekly Plate",
+    "slug": "weekly-plate",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#FAF7F6",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.catytati.weeklyplate",
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "Add photos to your recipes."
+      }
+    },
+    "android": {
+      "package": "com.catytati.weeklyplate"
+    },
+    "plugins": [
+      ["expo-image-picker", { "photosPermission": "Add photos to your recipes." }]
+    ]
+  }
+}
