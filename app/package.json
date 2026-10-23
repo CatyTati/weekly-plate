@@ -14,14 +14,18 @@
   "dependencies": {
     "@expo-google-fonts/rubik": "*",
     "@react-native-async-storage/async-storage": "*",
+    "@supabase/supabase-js": "*",
     "expo": "latest",
     "expo-font": "*",
     "expo-image-picker": "*",
+    "expo-linking": "*",
     "expo-status-bar": "*",
+    "expo-web-browser": "*",
     "react": "*",
     "react-native": "*",
     "react-native-safe-area-context": "*",
-    "react-native-svg": "*"
+    "react-native-svg": "*",
+    "react-native-url-polyfill": "*"
   },
   "devDependencies": {
     "@babel/core": "*"

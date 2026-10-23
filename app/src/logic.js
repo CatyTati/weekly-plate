@@ -2,8 +2,10 @@
 // weekly planner, shopping list and recipe validation.
 // Kept free of React Native imports so it runs under plain Node tests.
 import { S, DAYS, AISLES, AISLE_ORDER, TAG_KEYS, U, UNITS, UNIT_T, ING, R, COOKS } from './data.js';
+import { STRINGS2 } from './strings2.js';
+import { POSTS } from './feed.js';
 
-export { DAYS, AISLES, AISLE_ORDER, TAG_KEYS, U, UNITS, R, COOKS };
+export { DAYS, AISLES, AISLE_ORDER, TAG_KEYS, U, UNITS, R, COOKS, POSTS };
 
 export const LANGS = [
   { k: 'he', label: 'עברית', rtl: true, locale: 'he-IL' },
@@ -28,7 +30,7 @@ const EXTRA = {
 };
 
 export function makeT(lang) {
-  const table = { ...S.he, ...EXTRA.he, ...S[lang], ...EXTRA[lang] };
+  const table = { ...S.he, ...EXTRA.he, ...STRINGS2.he, ...S[lang], ...EXTRA[lang], ...STRINGS2[lang] };
   return (key, vars) => {
     let s = table[key] != null ? String(table[key]) : key;
     if (vars) for (const k in vars) s = s.split('{' + k + '}').join(vars[k]);
@@ -175,3 +177,40 @@ export function thisSunday(now = new Date()) {
   d.setDate(d.getDate() - d.getDay());
   return d;
 }
+
+/* ---------- accounts ---------- */
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+export const PASS_MIN = 8;
+export function validateSignIn({ email, password }, t) {
+  const errors = {};
+  if (!EMAIL.test((email || '').trim())) errors.email = t('eEmail');
+  if (!password) errors.password = t('ePassReq');
+  return errors;
+}
+export function validateSignUp({ name, email, password, terms }, t) {
+  const errors = {};
+  if (!(name || '').trim()) errors.name = t('eName');
+  if (!EMAIL.test((email || '').trim())) errors.email = t('eEmail');
+  if (!password) errors.password = t('ePassReq');
+  else if (password.length < PASS_MIN) errors.password = t('ePass');
+  if (!terms) errors.terms = t('eTerms');
+  return errors;
+}
+export const validateEmail = (email, t) => (EMAIL.test((email || '').trim()) ? null : t('eEmail'));
+
+/* ---------- home & feed ---------- */
+export function greetingKey(hour) {
+  return hour < 12 ? 'goodMorning' : hour < 17 ? 'goodAfternoon' : 'goodEvening';
+}
+export function timeAgo(hours, t) {
+  if (hours < 24) return t('hoursAgo', { n: Math.max(1, Math.round(hours)) });
+  const d = Math.floor(hours / 24);
+  return d === 1 ? t('yesterday') : t('daysAgo', { n: d });
+}
+/** Posts from followed cooks, newest first; optionally only one cook. */
+export function feedFor(following, onlyCook = null, posts = POSTS) {
+  return posts
+    .filter(p => following.includes(p.cook) && (!onlyCook || p.cook === onlyCook))
+    .sort((a, b) => a.hours - b.hours);
+}
+export const firstName = user => ((user?.name || user?.email || '').trim().split(/[\s@]/)[0] || '');

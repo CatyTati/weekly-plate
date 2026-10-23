@@ -7,6 +7,7 @@ import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { color, font, radius, shadow, tagColor, type } from '../theme';
 import { useStore } from '../store';
+import { useNav } from '../nav';
 
 export function T({ v = 'body', c = 'ink', center, style, children, ...rest }) {
   const { rtl } = useStore();
@@ -38,6 +39,17 @@ const ICONS = {
   coin: <><Circle cx="12" cy="12" r="9" /><Path d="M15 9.5c-.6-1-1.7-1.5-3-1.5-1.7 0-3 .9-3 2s1.3 1.7 3 2 3 .9 3 2-1.3 2-3 2c-1.3 0-2.4-.5-3-1.5M12 6.5v11" /></>,
   clock: <><Circle cx="12" cy="12" r="9" /><Path d="M12 7v5l3 2" /></>,
   alert: <><Circle cx="12" cy="12" r="9" /><Path d="M12 8v4M12 16h.01" /></>,
+  menu: <Path d="M4 7h16M4 12h16M4 17h10" />,
+  home: <Path d="M3 11.5 12 4l9 7.5M5.5 10v9.5h13V10" />,
+  feed: <><Rect x="3" y="3" width="18" height="18" rx="5" /><Circle cx="12" cy="12" r="4" /><Circle cx="17.5" cy="6.5" r="0.6" /></>,
+  heart: <Path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21.2l8.8-8.8a5.5 5.5 0 0 0 0-7.8z" />,
+  chat: <Path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9 9 0 0 1-4-.9L3 21l1.9-4.5A8.4 8.4 0 1 1 21 11.5z" />,
+  save: <Path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />,
+  gear: <><Circle cx="12" cy="12" r="3" /><Path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1" /></>,
+  globe: <><Circle cx="12" cy="12" r="9" /><Path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" /></>,
+  logout: <Path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />,
+  users: <><Path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><Circle cx="9" cy="7" r="4" /><Path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></>,
+  book: <><Path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V2H6.5A2.5 2.5 0 0 0 4 4.5v15z" /><Path d="M6.5 17A2.5 2.5 0 0 0 4 19.5 2.5 2.5 0 0 0 6.5 22H20v-5" /></>,
 };
 
 export function Icon({ name, c = 'ink', size = 22, w = 1.9, flip }) {
@@ -68,10 +80,18 @@ export function Screen({ children, scroll = true, footer }) {
   );
 }
 
-export function Header({ title, sub, right }) {
+export function MenuButton() {
+  const { openMenu } = useNav();
+  const { t } = useStore();
+  if (!openMenu) return null;
+  return <RoundButton icon="menu" label={t('menu')} onPress={openMenu} />;
+}
+
+export function Header({ title, sub, right, menu = true }) {
   return (
     <View style={{ gap: 4, marginBottom: 4 }}>
-      <View style={s.row}>
+      <View style={[s.row, { gap: 12 }]}>
+        {menu ? <MenuButton /> : null}
         <T v="display" style={{ flex: 1 }}>{title}</T>
         {right}
       </View>
@@ -151,7 +171,7 @@ export function Field({ label, error, style, inputStyle, ...input }) {
 
 export function TabBar({ tab, onTab }) {
   const { t } = useStore();
-  const tabs = [['week', 'tab_week'], ['shop', 'tab_shop'], ['recipes', 'tab_recipes'], ['community', 'tab_community']];
+  const tabs = [['home', 'home'], ['week', 'tab_week'], ['feed', 'feed'], ['shop', 'tab_shop']];
   return (
     <SafeAreaView edges={['bottom']} style={s.tabbar}>
       <View style={s.row}>
@@ -166,6 +186,18 @@ export function TabBar({ tab, onTab }) {
         })}
       </View>
     </SafeAreaView>
+  );
+}
+
+export function Avatar({ letter, fg = 'kids', bg = 'kidsSoft', size = 44, ring }) {
+  const inner = (
+    <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: color[bg] || bg, alignItems: 'center', justifyContent: 'center' }}>
+      <T v={size > 50 ? 'title' : 'heading'} c={fg} center>{(letter || '?').toUpperCase()}</T>
+    </View>
+  );
+  if (!ring) return inner;
+  return (
+    <View style={{ padding: 2.5, borderRadius: size, borderWidth: 2.5, borderColor: color.kids, borderEndColor: color.accent, borderBottomColor: color.accent }}>{inner}</View>
   );
 }
 

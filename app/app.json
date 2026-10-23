@@ -17,7 +17,13 @@
       "package": "com.catytati.weeklyplate"
     },
     "plugins": [
-      ["expo-image-picker", { "photosPermission": "Add photos to your recipes." }]
-    ]
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Add photos to your recipes."
+        }
+      ]
+    ],
+    "scheme": "weeklyplate"
   }
 }

@@ -3,6 +3,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { R, COOKS, makeT, isRtl, planWeek, swapDay as swap } from './logic';
+import { currentUser, onAuthChange, signOut } from './auth';
 
 const KEY = 'weekly-plate/v1';
 const DEFAULT = {
@@ -14,7 +15,10 @@ const DEFAULT = {
   plan: [],
   checked: {},
   custom: [],
-  following: ['noa'],
+  following: ['noa', 'amit'],
+  liked: {},
+  saved: {},
+  homeShows: { stories: true, tonight: true, week: true, shortcuts: true },
 };
 
 const Ctx = createContext(null);
@@ -22,13 +26,15 @@ const Ctx = createContext(null);
 export function StoreProvider({ children }) {
   const [state, setState] = useState(DEFAULT);
   const [ready, setReady] = useState(false);
+  const [user, setUser] = useState(null);
   const loaded = useRef(false);
 
   useEffect(() => {
-    AsyncStorage.getItem(KEY)
-      .then(raw => { if (raw) setState(s => ({ ...s, ...JSON.parse(raw) })); })
-      .catch(() => {})
-      .finally(() => { loaded.current = true; setReady(true); });
+    Promise.all([
+      AsyncStorage.getItem(KEY).then(raw => { if (raw) setState(s => ({ ...s, ...JSON.parse(raw), homeShows: { ...DEFAULT.homeShows, ...(JSON.parse(raw).homeShows || {}) } })); }).catch(() => {}),
+      currentUser().then(setUser).catch(() => {}),
+    ]).finally(() => { loaded.current = true; setReady(true); });
+    return onAuthChange(setUser);
   }, []);
 
   useEffect(() => {
@@ -51,9 +57,14 @@ export function StoreProvider({ children }) {
     deleteRecipe: id => setState(s => ({ ...s, custom: s.custom.filter(r => r.id !== id), plan: s.plan.map(p => (p === id ? null : p)) })),
     toggleFollow: id => setState(s => ({ ...s, following: s.following.includes(id) ? s.following.filter(x => x !== id) : [...s.following, id] })),
     copyPlan: cookId => setState(s => ({ ...s, checked: {}, plan: COOKS.find(c => c.id === cookId).plan.slice() })),
+    toggleLike: id => setState(s => ({ ...s, liked: { ...s.liked, [id]: !s.liked[id] } })),
+    toggleSave: id => setState(s => ({ ...s, saved: { ...s.saved, [id]: !s.saved[id] } })),
+    toggleHome: k => setState(s => ({ ...s, homeShows: { ...s.homeShows, [k]: !s.homeShows[k] } })),
+    signedIn: u => setUser(u),
+    logout: async () => { try { await signOut(); } finally { setUser(null); } },
   }), []);
 
-  const value = useMemo(() => ({ state, ready, recipes, byId, t, rtl: isRtl(state.lang), ...actions }), [state, ready, recipes, byId, t, actions]);
+  const value = useMemo(() => ({ state, ready, user, recipes, byId, t, rtl: isRtl(state.lang), ...actions }), [state, ready, user, recipes, byId, t, actions]);
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 

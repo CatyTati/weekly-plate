@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { R, makeT, planWeek, swapDay, shoppingList, fmtQty, validateRecipe, prepPlan, cost, money } from './logic.js';
+import { R, makeT, planWeek, swapDay, shoppingList, fmtQty, validateRecipe, prepPlan, cost, money, validateSignIn, validateSignUp, greetingKey, timeAgo, feedFor, firstName } from './logic.js';
 
 const seeded = (seed = 1) => () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
 const t = makeT('en');
@@ -81,6 +81,51 @@ test('big cook groups oven and stove dishes', () => {
 test('every language has the strings the app uses', () => {
   for (const lang of ['he', 'en', 'ru']) {
     const tt = makeT(lang);
-    for (const k of ['app', 'obTitle', 'tab_week', 'eNameReq', 'copyPlan', 'openPrep']) assert.notEqual(tt(k), k, `${lang}:${k}`);
+    for (const k of ['app', 'obTitle', 'tab_week', 'eNameReq', 'copyPlan', 'openPrep', 'withGoogle', 'logout', 'feedEmpty', 'show_stories']) assert.notEqual(tt(k), k, `${lang}:${k}`);
+  }
+});
+
+test('sign in checks email and password', () => {
+  assert.deepEqual(validateSignIn({ email: 'a@b.co', password: 'x' }, t), {});
+  assert.equal(validateSignIn({ email: 'nope', password: '' }, t).email, t('eEmail'));
+  assert.equal(validateSignIn({ email: 'a@b.co', password: '' }, t).password, t('ePassReq'));
+});
+
+test('sign up needs name, valid email, 8+ char password and terms', () => {
+  const ok = { name: 'Tanya', email: 'tanya@example.com', password: '12345678', terms: true };
+  assert.deepEqual(validateSignUp(ok, t), {});
+  const e = validateSignUp({ name: ' ', email: 'tanya@', password: '1234', terms: false }, t);
+  assert.deepEqual(Object.keys(e).sort(), ['email', 'name', 'password', 'terms']);
+  assert.equal(e.password, t('ePass'));
+});
+
+test('greeting follows the time of day', () => {
+  assert.equal(greetingKey(8), 'goodMorning');
+  assert.equal(greetingKey(14), 'goodAfternoon');
+  assert.equal(greetingKey(21), 'goodEvening');
+});
+
+test('feed shows only followed cooks, newest first', () => {
+  const f = feedFor(['noa', 'yossi']);
+  assert.ok(f.length > 0 && f.every(p => ['noa', 'yossi'].includes(p.cook)));
+  assert.deepEqual(f.map(p => p.hours), [...f.map(p => p.hours)].sort((a, b) => a - b));
+  assert.ok(feedFor(['noa'], 'noa').every(p => p.cook === 'noa'));
+  assert.deepEqual(feedFor([]), []);
+});
+
+test('time ago and first name', () => {
+  assert.equal(timeAgo(2, t), t('hoursAgo', { n: 2 }));
+  assert.equal(timeAgo(30, t), t('yesterday'));
+  assert.equal(timeAgo(52, t), t('daysAgo', { n: 2 }));
+  assert.equal(firstName({ name: 'Tanya Lukin' }), 'Tanya');
+  assert.equal(firstName({ email: 'tanya@example.com' }), 'tanya');
+});
+
+test('every feed post points to a real cook and recipe', async () => {
+  const { POSTS, COOKS } = await import('./logic.js');
+  for (const p of POSTS) {
+    assert.ok(COOKS.some(c => c.id === p.cook), p.id);
+    if (p.kind === 'recipe') assert.ok(R.some(r => r.id === p.recipe), p.id);
+    for (const l of ['he', 'en', 'ru']) assert.ok(p.text[l], p.id + l);
   }
 });

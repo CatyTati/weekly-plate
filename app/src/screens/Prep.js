@@ -29,7 +29,7 @@ export default function Prep({ back }) {
   return (
     <Screen>
       <RoundButton icon="back" flip label={t('back')} onPress={back} />
-      <Header title={t('tab_prep')} sub={`${t('prepDishes')}: ${num(p.recipes.length, lang)} · ${t('hours', { h: num(p.hours, lang) })}`} />
+      <Header menu={false} title={t('tab_prep')} sub={`${t('prepDishes')}: ${num(p.recipes.length, lang)} · ${t('hours', { h: num(p.hours, lang) })}`} />
       {!p.recipes.length ? <T c="muted">{t('prepEmpty')}</T> : (
         <Card style={{ gap: 18 }}>
           {p.chop.length ? <Step n={++n} title={t('step1')} lines={p.chop.map(c => `${ingName(c.n, lang)}: ${fmtQty(c.q, c.u, lang)}`)} /> : null}
