@@ -64,7 +64,7 @@ export function Icon({ name, c = 'ink', size = 22, w = 1.9, flip }) {
   );
 }
 
-export function Screen({ children, scroll = true, footer }) {
+export function Screen({ children, scroll = true, header, footer }) {
   const Body = scroll ? ScrollView : View;
   return (
     <View style={s.screen}>
@@ -73,6 +73,7 @@ export function Screen({ children, scroll = true, footer }) {
         <View style={[s.glow, { backgroundColor: color.glowGreen, left: -110, top: -120 }]} />
       </View>
       <SafeAreaView edges={['top']} style={{ flex: 1 }}>
+        {header ? <View style={s.header}>{header}</View> : null}
         <Body style={{ flex: 1 }} contentContainerStyle={scroll ? s.content : undefined} keyboardShouldPersistTaps="handled">
           {scroll ? children : <View style={[s.content, { flex: 1 }]}>{children}</View>}
         </Body>
@@ -208,6 +209,7 @@ export const s = StyleSheet.create({
   glowWrap: { ...StyleSheet.absoluteFillObject, overflow: 'hidden' },
   glow: { position: 'absolute', width: 320, height: 320, borderRadius: 160, opacity: 0.75 },
   content: { paddingHorizontal: 22, paddingTop: 12, paddingBottom: 28, gap: 16 },
+  header: { paddingHorizontal: 22, paddingTop: 8 },
   footer: { paddingHorizontal: 22, paddingBottom: 12, paddingTop: 8 },
   row: { flexDirection: 'row', alignItems: 'center' },
   card: { backgroundColor: color.surface, borderRadius: radius.card, padding: 16, gap: 10, ...shadow },
