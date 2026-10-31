@@ -11,7 +11,7 @@ const blank = () => ({ n: '', q: '', u: U, a: 'veg' });
 export default function AddRecipe({ back }) {
   const { state, t, recipes, addRecipe } = useStore();
   const lang = state.lang;
-  const [form, setForm] = useState({ name: '', time: '30', steps: '', kid: '', tags: {}, ing: [blank(), blank(), blank()], photos: [] });
+  const [form, setForm] = useState({ name: '', desc: '', time: '30', steps: '', kid: '', tags: {}, ing: [blank(), blank(), blank()], photos: [] });
   const [errors, setErrors] = useState({});
   const [photoError, setPhotoError] = useState('');
   const [tried, setTried] = useState(false);
@@ -44,7 +44,7 @@ export default function AddRecipe({ back }) {
     setTried(true);
     const res = validateRecipe(form, recipes, t);
     setErrors(res.errors);
-    if (res.value) { addRecipe(res.value); back(); }
+    if (res.value) { addRecipe({ ...res.value, desc: form.desc.trim() }); back(); }
     else scroll.current?.scrollTo?.({ y: 0, animated: true });
   }
 
@@ -126,6 +126,9 @@ export default function AddRecipe({ back }) {
           <Row gap={6}><Icon name="plus" c="accent" size={18} /><T v="bodyStrong" c="accent">{t('addIng')}</T></Row>
         </Pressable>
       </View>
+
+      <Field label={t('fDesc')} placeholder={t('descPh')} value={form.desc} multiline maxLength={160}
+        inputStyle={{ minHeight: 70, textAlignVertical: 'top' }} onChangeText={v => update({ desc: v })} />
 
       <Field label={t('fSteps')} placeholder={t('stepsPh')} value={form.steps} multiline maxLength={3000} error={errors.steps}
         inputStyle={{ minHeight: 110, textAlignVertical: 'top' }} onChangeText={v => update({ steps: v }, 'steps')} />

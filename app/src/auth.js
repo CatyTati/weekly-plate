@@ -24,7 +24,7 @@ export const supabase = isDemo ? null : createClient(URL, KEY, {
   auth: { storage: AsyncStorage, autoRefreshToken: true, persistSession: true, detectSessionInUrl: false, flowType: 'pkce' },
 });
 
-/** Error codes the screens translate: eLogin, eExists, eNetwork, eCancelled, eConfirm */
+/** Error codes the screens translate: eLogin, eExists, eNetwork, eCancelled, eConfirm, eRate, eSamePass */
 export class AuthError extends Error {
   constructor(code, detail) { super(detail || code); this.code = code; }
 }
@@ -41,6 +41,7 @@ function mapError(e) {
   if (m.includes('invalid login')) return new AuthError('eLogin');
   if (m.includes('already registered') || m.includes('already exists')) return new AuthError('eExists');
   if (m.includes('email not confirmed')) return new AuthError('eConfirm');
+  if (e?.status === 429 || m.includes('rate limit')) return new AuthError('eRate');
   if (m.includes('network') || m.includes('fetch')) return new AuthError('eNetwork');
   return new AuthError('eNetwork', e?.message);
 }
@@ -79,6 +80,20 @@ export async function signInWithProvider(provider) {
   return toUser(s.user, provider);
 }
 
+/** True for the link in a password reset email. */
+export function isRecoveryLink(url) {
+  if (isDemo || !url) return false;
+  const { path, queryParams } = Linking.parse(url);
+  return !!queryParams?.code && !!path?.endsWith('reset-password');
+}
+
+/** Finishes sign-in when a confirmation or password reset email's link opens the app. */
+export async function handleAuthLink(url) {
+  if (isDemo || !url) return;
+  const code = Linking.parse(url).queryParams?.code;
+  if (code) await supabase.auth.exchangeCodeForSession(code);
+}
+
 export async function signInWithEmail(email, password) {
   if (isDemo) {
     const saved = await currentUser().catch(() => null);
@@ -91,8 +106,13 @@ export async function signInWithEmail(email, password) {
 
 export async function signUpWithEmail(name, email, password) {
   if (isDemo) return demoSave({ id: 'demo-email', email: email.trim(), name: name.trim(), provider: 'email' });
-  const { data, error } = await supabase.auth.signUp({ email: email.trim(), password, options: { data: { full_name: name.trim() } } });
+  const { data, error } = await supabase.auth.signUp({
+    email: email.trim(), password,
+    options: { data: { full_name: name.trim() }, emailRedirectTo: Linking.createURL('auth-callback') },
+  });
   if (error) throw mapError(error);
+  // With email confirmation on, Supabase hides a taken address: no error, but no identities either.
+  if (data.user && data.user.identities?.length === 0) throw new AuthError('eExists');
   if (!data.session) throw new AuthError('eConfirm'); // project requires email confirmation
   return toUser(data.user, 'email');
 }
@@ -101,6 +121,11 @@ export async function sendPasswordReset(email) {
   if (isDemo) return;
   const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: Linking.createURL('reset-password') });
   if (error) throw mapError(error);
+}
+
+export async function updatePassword(password) {
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) throw String(error.message).toLowerCase().includes('different') ? new AuthError('eSamePass') : mapError(error);
 }
 
 export async function signOut() {

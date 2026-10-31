@@ -8,7 +8,7 @@ import { color } from '../theme';
 import { Avatar, Card, Field, Header, Pill, Row, Screen, Stepper, T } from '../components/ui';
 import { LanguageSwitch } from './Onboarding';
 
-const SECTIONS = ['stories', 'tonight', 'week', 'shortcuts'];
+const SECTIONS = ['stories'];
 
 export default function Settings() {
   const { state, user, t, set, toggleMode, toggleHome, logout } = useStore();

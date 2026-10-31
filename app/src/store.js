@@ -3,7 +3,8 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { R, COOKS, makeT, isRtl, planWeek, swapDay as swap } from './logic';
-import { currentUser, onAuthChange, signOut } from './auth';
+import * as Linking from 'expo-linking';
+import { currentUser, handleAuthLink, isRecoveryLink, onAuthChange, signOut } from './auth';
 
 const KEY = 'weekly-plate/v1';
 const DEFAULT = {
@@ -18,7 +19,8 @@ const DEFAULT = {
   following: ['noa', 'amit'],
   liked: {},
   saved: {},
-  homeShows: { stories: true, tonight: true, week: true, shortcuts: true },
+  recipeComments: {},
+  homeShows: { stories: true },
 };
 
 const Ctx = createContext(null);
@@ -27,6 +29,7 @@ export function StoreProvider({ children }) {
   const [state, setState] = useState(DEFAULT);
   const [ready, setReady] = useState(false);
   const [user, setUser] = useState(null);
+  const [recovery, setRecovery] = useState(false); // opened from a password reset email
   const loaded = useRef(false);
 
   useEffect(() => {
@@ -34,7 +37,14 @@ export function StoreProvider({ children }) {
       AsyncStorage.getItem(KEY).then(raw => { if (raw) setState(s => ({ ...s, ...JSON.parse(raw), homeShows: { ...DEFAULT.homeShows, ...(JSON.parse(raw).homeShows || {}) } })); }).catch(() => {}),
       currentUser().then(setUser).catch(() => {}),
     ]).finally(() => { loaded.current = true; setReady(true); });
-    return onAuthChange(setUser);
+    const openLink = url => {
+      if (isRecoveryLink(url)) setRecovery(true);
+      return handleAuthLink(url).catch(() => setRecovery(false));
+    };
+    Linking.getInitialURL().then(openLink).catch(() => {});
+    const links = Linking.addEventListener('url', e => { openLink(e.url); });
+    const unsubscribe = onAuthChange(setUser);
+    return () => { links.remove(); unsubscribe(); };
   }, []);
 
   useEffect(() => {
@@ -58,13 +68,14 @@ export function StoreProvider({ children }) {
     toggleFollow: id => setState(s => ({ ...s, following: s.following.includes(id) ? s.following.filter(x => x !== id) : [...s.following, id] })),
     copyPlan: cookId => setState(s => ({ ...s, checked: {}, plan: COOKS.find(c => c.id === cookId).plan.slice() })),
     toggleLike: id => setState(s => ({ ...s, liked: { ...s.liked, [id]: !s.liked[id] } })),
+    addComment: (id, comment) => setState(s => ({ ...s, recipeComments: { ...s.recipeComments, [id]: [...(s.recipeComments[id] || []), comment] } })),
     toggleSave: id => setState(s => ({ ...s, saved: { ...s.saved, [id]: !s.saved[id] } })),
     toggleHome: k => setState(s => ({ ...s, homeShows: { ...s.homeShows, [k]: !s.homeShows[k] } })),
     signedIn: u => setUser(u),
     logout: async () => { try { await signOut(); } finally { setUser(null); } },
   }), []);
 
-  const value = useMemo(() => ({ state, ready, user, recipes, byId, t, rtl: isRtl(state.lang), ...actions }), [state, ready, user, recipes, byId, t, actions]);
+  const value = useMemo(() => ({ state, ready, user, recovery, endRecovery: () => setRecovery(false), recipes, byId, t, rtl: isRtl(state.lang), ...actions }), [state, ready, user, recovery, recipes, byId, t, actions]);
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 

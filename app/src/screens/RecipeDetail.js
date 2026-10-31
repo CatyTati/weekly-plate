@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Image, ScrollView, Share, View, useWindowDimensions } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore } from '../store';
 import { cost, dayName, fmtQty, hasPrice, ingName, money, pick } from '../logic';
-import { color } from '../theme';
+import { color, shadow } from '../theme';
 import { Button, Card, Pill, Row, RoundButton, Screen, Stepper, T, Tag } from '../components/ui';
 
 function Photo({ uri }) {
@@ -18,6 +19,7 @@ function Photo({ uri }) {
 }
 
 export default function RecipeDetail({ id, back }) {
+  const insets = useSafeAreaInsets();
   const { state, t, byId, set, setDay, deleteRecipe } = useStore();
   const { width } = useWindowDimensions();
   const r = byId(id);
@@ -30,6 +32,7 @@ export default function RecipeDetail({ id, back }) {
   const text = `${pick(r.name, lang)}\n` + r.ing.map(([n, q, u]) => `• ${ingName(n, lang)} – ${fmtQty(q * servings / 4, u, lang)}`).join('\n') + (steps.length ? '\n\n' + steps.join('\n') : '');
 
   return (
+    <View style={{ flex: 1 }}>
     <Screen footer={
       picking ? (
         <View style={{ gap: 10 }}>
@@ -47,13 +50,12 @@ export default function RecipeDetail({ id, back }) {
         </Row>
       )
     }>
-      <Row style={{ justifyContent: 'space-between' }}>
-        <RoundButton icon="back" flip label={t('back')} onPress={back} />
-        {r.custom ? (
+      {r.custom ? (
+        <Row>
           <Pill label={confirmDel ? t('delConfirm') : t('del')} active={confirmDel} c="error" soft="errorSoft"
             onPress={() => { if (confirmDel) { deleteRecipe(r.id); back(); } else setConfirmDel(true); }} />
-        ) : null}
-      </Row>
+        </Row>
+      ) : null}
       {r.photos?.length > 1 ? (
         <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -22 }}>
           {r.photos.map(p => <View key={p} style={{ width, paddingHorizontal: 22 }}><Photo uri={p} /></View>)}
@@ -84,5 +86,9 @@ export default function RecipeDetail({ id, back }) {
         </Card>
       ) : null}
     </Screen>
+    <View style={{ position: 'absolute', top: insets.top + 8, end: 22, borderRadius: 20, ...shadow }}>
+      <RoundButton icon="close" label={t('close')} onPress={back} />
+    </View>
+    </View>
   );
 }

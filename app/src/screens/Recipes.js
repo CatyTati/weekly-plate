@@ -1,19 +1,34 @@
 import React, { useState } from 'react';
 import { Image, Pressable, View } from 'react-native';
 import { useStore } from '../store';
-import { TAG_KEYS, cost, hasPrice, money, pick } from '../logic';
+import { TAG_KEYS, cost, hasPrice, money, num, pick } from '../logic';
+import { RECIPE_DESC } from '../strings2';
 import { color } from '../theme';
-import { Button, Card, Field, Header, Pill, Row, Screen, T, Tag } from '../components/ui';
+import { Button, Card, Field, Header, Icon, Pill, Row, Screen, T, Tag } from '../components/ui';
 
-export default function Recipes({ open }) {
-  const { state, t, recipes } = useStore();
+const PICTURE = 130;
+const likeKey = r => `recipe:${r.id}`; // feed posts share state.liked
+const describe = (r, lang) => pick(r.desc || RECIPE_DESC[r.id], lang);
+
+function Plate({ height, colors = ['#F6E3DA', '#E59A86'] }) {
+  return (
+    <View style={{ height, borderRadius: 18, backgroundColor: colors[0], alignItems: 'center', justifyContent: 'center' }}>
+      <View style={{ width: height * 0.7, height: height * 0.7, borderRadius: height, backgroundColor: color.surface, alignItems: 'center', justifyContent: 'center' }}>
+        <View style={{ width: height * 0.5, height: height * 0.5, borderRadius: height, backgroundColor: colors[1] }} />
+      </View>
+    </View>
+  );
+}
+
+/** Add button, search, filters and the recipe cards. Used by Home and the Recipes screen. */
+export function RecipeList({ open }) {
+  const { state, t, recipes, toggleLike } = useStore();
   const lang = state.lang;
   const [filter, setFilter] = useState('all');
   const [q, setQ] = useState('');
   const list = recipes.filter(r => (filter === 'all' || r.tags.includes(filter)) && (!q || pick(r.name, lang).toLowerCase().includes(q.toLowerCase())));
   return (
-    <Screen>
-      <Header title={t('tab_recipes')} />
+    <>
       <Button kind="secondary" icon="plus" label={t('addRecipe')} onPress={() => open('add')} />
       <Field placeholder={t('search')} value={q} onChangeText={setQ} returnKeyType="search" />
       <Row gap={6} style={{ flexWrap: 'wrap' }}>
@@ -23,22 +38,41 @@ export default function Recipes({ open }) {
       {!list.length ? <T c="muted">{t('noMatch')}</T> : null}
       {list.map(r => (
         <Pressable key={r.id} onPress={() => open('recipe', { id: r.id })}>
-          <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <Card style={{ gap: 12, paddingTop: 12 }}>
             {r.photos?.[0]
-              ? <Image source={{ uri: r.photos[0] }} style={{ width: 64, height: 64, borderRadius: 18 }} />
-              : <View style={{ width: 64, height: 64, borderRadius: 18, backgroundColor: '#F6E3DA', alignItems: 'center', justifyContent: 'center' }}>
-                  <View style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: color.surface, alignItems: 'center', justifyContent: 'center' }}>
-                    <View style={{ width: 26, height: 26, borderRadius: 13, backgroundColor: '#E59A86' }} />
-                  </View>
-                </View>}
-            <View style={{ flex: 1, gap: 4 }}>
-              <T v="bodyStrong" numberOfLines={2}>{pick(r.name, lang)}{r.custom ? `  · ${t('mine')}` : ''}</T>
-              <T v="caption" c="muted">{r.time} {t('min')} · {hasPrice(r) ? t('perServing', { c: money(cost(r, state.servings) / state.servings, lang) }) : t('unknownCost')}</T>
-              <Row gap={6} style={{ flexWrap: 'wrap' }}>{r.tags.map(k => <Tag key={k} k={k} />)}</Row>
-            </View>
+              ? <Image source={{ uri: r.photos[0] }} style={{ height: PICTURE, borderRadius: 18 }} />
+              : <Plate height={PICTURE} />}
+            <Row gap={16}>
+              <Pressable onPress={() => toggleLike(likeKey(r))} hitSlop={8} accessibilityRole="button" accessibilityState={{ selected: !!state.liked[likeKey(r)] }} accessibilityLabel={t('like')}>
+                <Row gap={6}>
+                  <Icon name="heart" c={state.liked[likeKey(r)] ? 'kids' : 'ink'} size={24} w={state.liked[likeKey(r)] ? 2.4 : 1.9} />
+                  <T v="bodyStrong">{num(state.liked[likeKey(r)] ? 1 : 0, lang)}</T>
+                </Row>
+              </Pressable>
+              <Pressable onPress={() => open('comments', { id: r.id })} hitSlop={8} accessibilityRole="button" accessibilityLabel={t('commentsTitle')}>
+                <Row gap={6}>
+                  <Icon name="chat" size={24} />
+                  <T v="bodyStrong">{num((state.recipeComments[r.id] || []).length, lang)}</T>
+                </Row>
+              </Pressable>
+            </Row>
+            <T v="title" numberOfLines={2}>{pick(r.name, lang)}{r.custom ? `  · ${t('mine')}` : ''}</T>
+            <T v="caption" c="muted">{r.time} {t('min')} · {hasPrice(r) ? t('perServing', { c: money(cost(r, state.servings) / state.servings, lang) }) : t('unknownCost')}</T>
+            {describe(r, lang) ? <T c="muted" numberOfLines={2}>{describe(r, lang)}</T> : null}
+            <Row gap={6} style={{ flexWrap: 'wrap' }}>{r.tags.map(k => <Tag key={k} k={k} />)}</Row>
           </Card>
         </Pressable>
       ))}
+    </>
+  );
+}
+
+export default function Recipes({ open }) {
+  const { t } = useStore();
+  return (
+    <Screen>
+      <Header title={t('tab_recipes')} />
+      <RecipeList open={open} />
     </Screen>
   );
 }

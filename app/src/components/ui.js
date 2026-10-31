@@ -1,6 +1,8 @@
 // Shared UI pieces that match the Figma components.
 // Direction: the root view sets `direction: 'rtl'` for Hebrew, which mirrors
-// every row. Text alignment is set explicitly so it follows the language too.
+// every row. Under that direction 'left' means the start of the line, so 'left'
+// puts Hebrew on the right and 'right' would put it on the left. TextInput doesn't
+// swap like this, so Field still asks for 'right'.
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
@@ -13,7 +15,7 @@ export function T({ v = 'body', c = 'ink', center, style, children, ...rest }) {
   const { rtl } = useStore();
   return (
     <Text
-      style={[type[v], { color: color[c] || c, textAlign: center ? 'center' : rtl ? 'right' : 'left', writingDirection: rtl ? 'rtl' : 'ltr' }, style]}
+      style={[type[v], { color: color[c] || c, textAlign: center ? 'center' : 'left', writingDirection: rtl ? 'rtl' : 'ltr' }, style]}
       {...rest}
     >
       {children}

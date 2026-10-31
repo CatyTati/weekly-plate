@@ -7,7 +7,7 @@ import { StoreProvider, useStore } from './src/store';
 import { NavCtx, MAIN_TABS } from './src/nav';
 import { color } from './src/theme';
 import { TabBar } from './src/components/ui';
-import Auth from './src/screens/Auth';
+import Auth, { NewPassword } from './src/screens/Auth';
 import Onboarding from './src/screens/Onboarding';
 import Home from './src/screens/Home';
 import Week from './src/screens/Week';
@@ -18,11 +18,12 @@ import Recipes from './src/screens/Recipes';
 import RecipeDetail from './src/screens/RecipeDetail';
 import AddRecipe from './src/screens/AddRecipe';
 import Community from './src/screens/Community';
+import Comments from './src/screens/Comments';
 import Settings from './src/screens/Settings';
 import Menu from './src/screens/Menu';
 
 function Root() {
-  const { ready, state, user, rtl, signedIn } = useStore();
+  const { ready, state, user, recovery, rtl, signedIn } = useStore();
   const [view, setView] = useState('home'); // home | week | feed | shop | recipes | community | settings
   const [stack, setStack] = useState([]); // screens opened on top of a view
   const [menu, setMenu] = useState(false);
@@ -40,9 +41,11 @@ function Root() {
 
   const top = stack[stack.length - 1];
   let body;
-  if (!user) body = <Auth onSignedIn={u => { signedIn(u); nav.go('home'); }} />;
+  if (recovery && user) body = <NewPassword />;
+  else if (!user) body = <Auth onSignedIn={u => { signedIn(u); nav.go('home'); }} />;
   else if (!state.onboarded) body = <Onboarding />;
   else if (top?.screen === 'recipe') body = <RecipeDetail id={top.params.id} back={nav.back} />;
+  else if (top?.screen === 'comments') body = <Comments id={top.params.id} back={nav.back} />;
   else if (top?.screen === 'add') body = <AddRecipe back={nav.back} />;
   else if (top?.screen === 'prep') body = <Prep back={nav.back} />;
   else if (view === 'home') body = <Home />;
@@ -53,7 +56,7 @@ function Root() {
   else if (view === 'community') body = <Community goWeek={() => nav.go('week')} />;
   else body = <Settings />;
 
-  const signedInApp = user && state.onboarded;
+  const signedInApp = user && state.onboarded && !recovery;
   return (
     // `direction` mirrors every row for Hebrew without restarting the app.
     <NavCtx.Provider value={signedInApp ? nav : {}}>
