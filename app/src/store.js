@@ -2,7 +2,7 @@
 // Later this is replaced by calls to the Python API; the screens don't change.
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { R, COOKS, makeT, isRtl, planWeek, swapDay as swap } from './logic';
+import { R, COOKS, makeT, isRtl, planWeek, swapDay as swap, weekKey } from './logic';
 import * as Linking from 'expo-linking';
 import { currentUser, handleAuthLink, isRecoveryLink, onAuthChange, signOut } from './auth';
 
@@ -13,7 +13,8 @@ const DEFAULT = {
   modes: { kids: true, budget: true, prep: false, quick: true },
   servings: 4,
   budget: 450,
-  plan: [],
+  plan: [], // this week; the same list is also in weeks
+  weeks: {}, // every saved week, by weekKey
   checked: {},
   custom: [],
   following: ['noa', 'amit'],
@@ -25,6 +26,17 @@ const DEFAULT = {
 
 const Ctx = createContext(null);
 
+// Saves a week's plan. `plan` always follows the week we are in.
+const withPlan = (s, plan, key = weekKey()) => ({ ...s, weeks: { ...s.weeks, [key]: plan }, plan: key === weekKey() ? plan : s.plan });
+
+// Starts each new week empty, and keeps a plan saved before weeks existed.
+function loadSaved(saved) {
+  const key = weekKey();
+  const weeks = saved.weeks || (saved.plan?.length ? { [key]: saved.plan } : {});
+  return { ...saved, weeks, plan: weeks[key] || [] };
+}
+
+
 export function StoreProvider({ children }) {
   const [state, setState] = useState(DEFAULT);
   const [ready, setReady] = useState(false);
@@ -34,7 +46,7 @@ export function StoreProvider({ children }) {
 
   useEffect(() => {
     Promise.all([
-      AsyncStorage.getItem(KEY).then(raw => { if (raw) setState(s => ({ ...s, ...JSON.parse(raw), homeShows: { ...DEFAULT.homeShows, ...(JSON.parse(raw).homeShows || {}) } })); }).catch(() => {}),
+      AsyncStorage.getItem(KEY).then(raw => { if (raw) setState(s => ({ ...s, ...loadSaved(JSON.parse(raw)), homeShows: { ...DEFAULT.homeShows, ...(JSON.parse(raw).homeShows || {}) } })); }).catch(() => {}),
       currentUser().then(setUser).catch(() => {}),
     ]).finally(() => { loaded.current = true; setReady(true); });
     const openLink = url => {
@@ -58,15 +70,15 @@ export function StoreProvider({ children }) {
   const actions = useMemo(() => ({
     set: patch => setState(s => ({ ...s, ...(typeof patch === 'function' ? patch(s) : patch) })),
     toggleMode: k => setState(s => ({ ...s, modes: { ...s.modes, [k]: !s.modes[k] } })),
-    buildWeek: () => setState(s => ({ ...s, onboarded: true, checked: {}, plan: planWeek(R.concat(s.custom), s.modes) })),
-    swapDay: d => setState(s => ({ ...s, plan: swap(s.plan, d, R.concat(s.custom), s.modes) })),
-    setDay: (d, id) => setState(s => { const plan = s.plan.slice(); plan[d] = id; return { ...s, plan }; }),
+    buildWeek: key => setState(s => withPlan({ ...s, onboarded: true, checked: {} }, planWeek(R.concat(s.custom), s.modes), key)),
+    swapDay: d => setState(s => withPlan(s, swap(s.plan, d, R.concat(s.custom), s.modes))),
+    setDay: (d, id, key = weekKey()) => setState(s => { const plan = (s.weeks[key] || []).slice(); plan[d] = id; return withPlan(s, plan, key); }),
     toggleItem: key => setState(s => ({ ...s, checked: { ...s.checked, [key]: !s.checked[key] } })),
     clearChecks: () => setState(s => ({ ...s, checked: {} })),
     addRecipe: r => setState(s => ({ ...s, custom: [...s.custom, r] })),
-    deleteRecipe: id => setState(s => ({ ...s, custom: s.custom.filter(r => r.id !== id), plan: s.plan.map(p => (p === id ? null : p)) })),
+    deleteRecipe: id => setState(s => withPlan({ ...s, custom: s.custom.filter(r => r.id !== id) }, s.plan.map(p => (p === id ? null : p)))),
     toggleFollow: id => setState(s => ({ ...s, following: s.following.includes(id) ? s.following.filter(x => x !== id) : [...s.following, id] })),
-    copyPlan: cookId => setState(s => ({ ...s, checked: {}, plan: COOKS.find(c => c.id === cookId).plan.slice() })),
+    copyPlan: cookId => setState(s => withPlan({ ...s, checked: {} }, COOKS.find(c => c.id === cookId).plan.slice())),
     toggleLike: id => setState(s => ({ ...s, liked: { ...s.liked, [id]: !s.liked[id] } })),
     addComment: (id, comment) => setState(s => ({ ...s, recipeComments: { ...s.recipeComments, [id]: [...(s.recipeComments[id] || []), comment] } })),
     toggleSave: id => setState(s => ({ ...s, saved: { ...s.saved, [id]: !s.saved[id] } })),

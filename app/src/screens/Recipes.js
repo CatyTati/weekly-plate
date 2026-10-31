@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { Image, Pressable, View } from 'react-native';
 import { useStore } from '../store';
-import { TAG_KEYS, cost, hasPrice, money, num, pick } from '../logic';
+import { TAG_KEYS, cost, dayName, hasPrice, money, num, pick } from '../logic';
 import { RECIPE_DESC } from '../strings2';
 import { color } from '../theme';
-import { Button, Card, Field, Header, Icon, Pill, Row, Screen, T, Tag } from '../components/ui';
+import { Button, Card, Field, Header, Icon, Pill, Row, RoundButton, Screen, T, Tag } from '../components/ui';
 
 const PICTURE = 130;
 const likeKey = r => `recipe:${r.id}`; // feed posts share state.liked
@@ -21,7 +21,7 @@ function Plate({ height, colors = ['#F6E3DA', '#E59A86'] }) {
 }
 
 /** Add button, search, filters and the recipe cards. Used by Home and the Recipes screen. */
-export function RecipeList({ open }) {
+export function RecipeList({ open, onPick }) {
   const { state, t, recipes, toggleLike } = useStore();
   const lang = state.lang;
   const [filter, setFilter] = useState('all');
@@ -29,7 +29,7 @@ export function RecipeList({ open }) {
   const list = recipes.filter(r => (filter === 'all' || r.tags.includes(filter)) && (!q || pick(r.name, lang).toLowerCase().includes(q.toLowerCase())));
   return (
     <>
-      <Button kind="secondary" icon="plus" label={t('addRecipe')} onPress={() => open('add')} />
+      {onPick ? null : <Button kind="secondary" icon="plus" label={t('addRecipe')} onPress={() => open('add')} />}
       <Field placeholder={t('search')} value={q} onChangeText={setQ} returnKeyType="search" />
       <Row gap={6} style={{ flexWrap: 'wrap' }}>
         <Pill label={t('all')} active={filter === 'all'} onPress={() => setFilter('all')} />
@@ -37,7 +37,7 @@ export function RecipeList({ open }) {
       </Row>
       {!list.length ? <T c="muted">{t('noMatch')}</T> : null}
       {list.map(r => (
-        <Pressable key={r.id} onPress={() => open('recipe', { id: r.id })}>
+        <Pressable key={r.id} onPress={() => (onPick ? onPick(r.id) : open('recipe', { id: r.id }))}>
           <Card style={{ gap: 12, paddingTop: 12 }}>
             {r.photos?.[0]
               ? <Image source={{ uri: r.photos[0] }} style={{ height: PICTURE, borderRadius: 18 }} />
@@ -64,6 +64,17 @@ export function RecipeList({ open }) {
         </Pressable>
       ))}
     </>
+  );
+}
+
+/** Chooses a recipe for one day of a week. */
+export function PickRecipe({ week, day, back }) {
+  const { state, t, setDay } = useStore();
+  return (
+    <Screen header={<Row style={{ justifyContent: 'flex-end' }}><RoundButton icon="close" label={t('close')} onPress={back} /></Row>}>
+      <T v="display">{t('pickFor', { d: dayName(day, state.lang) })}</T>
+      <RecipeList onPick={id => { setDay(day, id, week); back(); }} />
+    </Screen>
   );
 }
 

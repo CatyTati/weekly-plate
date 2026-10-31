@@ -10,11 +10,11 @@ import { TabBar } from './src/components/ui';
 import Auth, { NewPassword } from './src/screens/Auth';
 import Onboarding from './src/screens/Onboarding';
 import Home from './src/screens/Home';
-import Week from './src/screens/Week';
+import Week, { initialWeekView } from './src/screens/Week';
 import Feed from './src/screens/Feed';
 import Shop from './src/screens/Shop';
 import Prep from './src/screens/Prep';
-import Recipes from './src/screens/Recipes';
+import Recipes, { PickRecipe } from './src/screens/Recipes';
 import RecipeDetail from './src/screens/RecipeDetail';
 import AddRecipe from './src/screens/AddRecipe';
 import Community from './src/screens/Community';
@@ -27,6 +27,7 @@ function Root() {
   const [view, setView] = useState('home'); // home | week | feed | shop | recipes | community | settings
   const [stack, setStack] = useState([]); // screens opened on top of a view
   const [menu, setMenu] = useState(false);
+  const [weekView, setWeekView] = useState(initialWeekView);
   const [feedOf, setFeedOf] = useState(null);
 
   const nav = useMemo(() => ({
@@ -45,11 +46,12 @@ function Root() {
   else if (!user) body = <Auth onSignedIn={u => { signedIn(u); nav.go('home'); }} />;
   else if (!state.onboarded) body = <Onboarding />;
   else if (top?.screen === 'recipe') body = <RecipeDetail id={top.params.id} back={nav.back} />;
+  else if (top?.screen === 'pick') body = <PickRecipe week={top.params.week} day={top.params.day} back={nav.back} />;
   else if (top?.screen === 'comments') body = <Comments id={top.params.id} back={nav.back} />;
   else if (top?.screen === 'add') body = <AddRecipe back={nav.back} />;
   else if (top?.screen === 'prep') body = <Prep back={nav.back} />;
   else if (view === 'home') body = <Home />;
-  else if (view === 'week') body = <Week open={nav.open} />;
+  else if (view === 'week') body = <Week open={nav.open} view={weekView} setView={setWeekView} />;
   else if (view === 'feed') body = <Feed only={feedOf} />;
   else if (view === 'shop') body = <Shop />;
   else if (view === 'recipes') body = <Recipes open={nav.open} />;

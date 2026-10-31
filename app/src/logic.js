@@ -177,6 +177,15 @@ export function thisSunday(now = new Date()) {
   d.setDate(d.getDate() - d.getDay());
   return d;
 }
+/** Saved plans are stored by the date of the week's Sunday, as YYYY-MM-DD. */
+export function weekKey(sunday = thisSunday()) {
+  const pad = n => String(n).padStart(2, '0');
+  return `${sunday.getFullYear()}-${pad(sunday.getMonth() + 1)}-${pad(sunday.getDate())}`;
+}
+export function keyToDate(key) {
+  const [y, m, d] = key.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
 
 /* ---------- accounts ---------- */
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
