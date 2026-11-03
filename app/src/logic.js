@@ -18,15 +18,15 @@ const EXTRA = {
   he: { obStep: 'שלב 1 מתוך 2', obTitle: 'מה חשוב אצלכם בבית?', obSub: 'אפשר לבחור כמה. נתאים את התכנון אליכם.', obBuild: 'בנו לי שבוע',
         sub_kids: 'מנות שילדים באמת אוכלים', sub_budget: 'ארוחות טעימות במחיר שפוי', sub_prep: 'בישול אחד גדול ביום ראשון', sub_quick: 'ערבי חול מהירים',
         yourWeek: 'השבוע שלכם', people: '{n} סועדים', left: 'נשארו {b}', openPrep: 'לתכנון הבישול הגדול', back: 'חזרה', cancel: 'ביטול', addToWeek: 'הוספה לשבוע', pickDay: 'לאיזה יום?',
-        sendList: 'שליחת הרשימה', newRecipe: 'מתכון חדש', addRecipe: 'הוספת מתכון', perPortion: 'למנה', byCook: 'מאת {n}', settings: 'הגדרות', photoPerm: 'צריך הרשאה לגלריה כדי להוסיף תמונות.' },
+        sendList: 'שליחת הרשימה', newRecipe: 'מתכון חדש', addRecipe: 'הוספת מתכון', perPortion: 'למנה', byCook: 'מאת {n}', settings: 'הגדרות' },
   en: { obStep: 'Step 1 of 2', obTitle: 'What matters in your home?', obSub: 'Pick any. We’ll tailor the plan to you.', obBuild: 'Build my week',
         sub_kids: 'Dishes kids actually eat', sub_budget: 'Tasty meals at a fair price', sub_prep: 'One big cook on Sunday', sub_quick: 'Quick weeknights',
         yourWeek: 'Your week', people: '{n} people', left: '{b} left', openPrep: 'Plan the big cook', back: 'Back', cancel: 'Cancel', addToWeek: 'Add to week', pickDay: 'Which day?',
-        sendList: 'Send the list', newRecipe: 'New recipe', addRecipe: 'Add a recipe', perPortion: 'per serving', byCook: 'by {n}', settings: 'Settings', photoPerm: 'Allow photo access to add pictures.' },
+        sendList: 'Send the list', newRecipe: 'New recipe', addRecipe: 'Add a recipe', perPortion: 'per serving', byCook: 'by {n}', settings: 'Settings' },
   ru: { obStep: 'Шаг 1 из 2', obTitle: 'Что важно в вашей семье?', obSub: 'Можно выбрать несколько. Подстроим меню под вас.', obBuild: 'Составить меню',
         sub_kids: 'Блюда, которые дети едят', sub_budget: 'Вкусно и недорого', sub_prep: 'Одна большая готовка в воскресенье', sub_quick: 'Быстрые будние ужины',
         yourWeek: 'Ваша неделя', people: '{n} чел.', left: 'осталось {b}', openPrep: 'План большой готовки', back: 'Назад', cancel: 'Отмена', addToWeek: 'В неделю', pickDay: 'На какой день?',
-        sendList: 'Отправить список', newRecipe: 'Новый рецепт', addRecipe: 'Добавить рецепт', perPortion: 'за порцию', byCook: '{n}', settings: 'Настройки', photoPerm: 'Разрешите доступ к фото, чтобы добавить снимки.' },
+        sendList: 'Отправить список', newRecipe: 'Новый рецепт', addRecipe: 'Добавить рецепт', perPortion: 'за порцию', byCook: '{n}', settings: 'Настройки' },
 };
 
 export function makeT(lang) {

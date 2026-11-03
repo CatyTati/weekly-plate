@@ -16,6 +16,7 @@ export default function AddRecipe({ back }) {
   const [photoError, setPhotoError] = useState('');
   const [tried, setTried] = useState(false);
   const scroll = useRef(null);
+  const picking = useRef(false); // a second tap while the picker opens would stack another picker
 
   const update = (patch, clear) => { setForm(f => ({ ...f, ...patch })); if (clear) setErrors(e => { const n = { ...e }; delete n[clear]; return n; }); };
   const setRow = (i, patch) => update({ ing: form.ing.map((r, j) => (j === i ? { ...r, ...patch } : r)) }, 'ing.' + i);
@@ -24,9 +25,15 @@ export default function AddRecipe({ back }) {
     setPhotoError('');
     const left = LIMITS.photos - form.photos.length;
     if (left <= 0) return setPhotoError(t('ePhotoMax', { m: LIMITS.photos, f: '' }).replace(' ""', ''));
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) return setPhotoError(t('photoPerm'));
-    const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsMultipleSelection: true, selectionLimit: left, quality: 0.7 });
+    if (picking.current) return;
+    picking.current = true;
+    let res;
+    try {
+      // The system photo picker needs no library permission.
+      res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsMultipleSelection: true, selectionLimit: left, quality: 0.7 });
+    } finally {
+      picking.current = false;
+    }
     if (res.canceled) return;
     const errs = [];
     const ok = [];
