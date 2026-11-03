@@ -1,7 +1,7 @@
 // Pure app logic (no React): translation helpers, quantities, cost,
 // weekly planner, shopping list and recipe validation.
 // Kept free of React Native imports so it runs under plain Node tests.
-import { S, DAYS, AISLES, AISLE_ORDER, TAG_KEYS, U, UNITS, UNIT_T, ING } from './data.js';
+import { S, DAYS, AISLES, AISLE_ORDER, TAG_KEYS, U, UNITS, UNIT_T } from './data.js';
 import { STRINGS2 } from './strings2.js';
 
 export { DAYS, AISLES, AISLE_ORDER, TAG_KEYS, U, UNITS };
@@ -43,7 +43,8 @@ export const isRtl = lang => (LANGS.find(l => l.k === lang) || LANGS[0]).rtl;
 export const num = (n, lang) => Number(n).toLocaleString(localeOf(lang));
 export const money = (n, lang) => '₪' + num(Math.round(n), lang);
 export const unitName = (u, lang) => (lang === 'he' ? u : (UNIT_T[lang] || {})[u] || u);
-export const ingName = (n, lang) => (lang === 'he' ? n : ING[n] ? ING[n][lang === 'en' ? 0 : 1] : n);
+// Ingredient names are shown exactly as the cook typed them, in every language.
+export const ingName = n => n;
 export const dayName = (d, lang) => DAYS[lang][d];
 export const aisleName = (a, lang) => AISLES[lang][a];
 
