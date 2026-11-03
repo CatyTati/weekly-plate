@@ -68,6 +68,8 @@ export default function Week({ open, view, setView }) {
   const hasPrep = week === now && state.modes.prep && dishes.some(r => r?.tags.includes('prep'));
   const range = weekRangeLabel(keyToDate(week), lang);
   const choose = day => open('pick', { week, day });
+  // Past weeks, and days of this week before today, are history only.
+  const locked = d => past || (week === now && d < new Date().getDay());
 
   return (
     <Screen>
@@ -108,7 +110,7 @@ export default function Week({ open, view, setView }) {
       {past && !dishes.some(Boolean) ? null : (
         <View style={{ gap: 10 }}>
           {dishes.map((r, d) => (
-            <Pressable key={d} onPress={() => (r ? open('recipe', { id: r.id, day: d }) : past ? null : choose(d))}>
+            <Pressable key={d} onPress={() => (r ? open('recipe', { id: r.id, day: d }) : locked(d) ? null : choose(d))}>
               <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14 }}>
                 <View style={{ width: 84, paddingVertical: 8, borderRadius: radius.card - 4, backgroundColor: color.accentSoft, alignItems: 'center' }}>
                   <T v="bodyStrong" c="accent" center>{dayName(d, lang)}</T>
@@ -120,9 +122,14 @@ export default function Week({ open, view, setView }) {
                     <T v="caption" c="muted">{r.time} {t('min')} · {hasPrice(r) ? money(cost(r, state.servings), lang) : t('unknownCost')}</T>
                     <Row gap={6} style={{ flexWrap: 'wrap' }}>{r.tags.map(k => <Tag key={k} k={k} />)}</Row>
                     {state.modes.kids && r.kid ? <T v="caption" c="kids">{t('forKids')} {pick(r.kid, lang)}</T> : null}
-                  </> : <T c={past ? 'muted' : 'accent'}>{past ? t('noDinner') : t('chooseRecipe')}</T>}
+                    {locked(d) ? null : (
+                      <Pressable onPress={() => choose(d)} hitSlop={8} accessibilityRole="button" style={{ alignSelf: 'flex-start' }}>
+                        <T v="bodyStrong" c="accent">{t('changeRecipe')}</T>
+                      </Pressable>
+                    )}
+                  </> : <T c={locked(d) ? 'muted' : 'accent'}>{locked(d) ? t('noDinner') : t('chooseRecipe')}</T>}
                 </View>
-                {past || r ? null : <RoundButton icon="plus" bg="bg" c="accent" size={36} label={t('chooseRecipe')} onPress={() => choose(d)} />}
+                {locked(d) || r ? null : <RoundButton icon="plus" bg="bg" c="accent" size={36} label={t('chooseRecipe')} onPress={() => choose(d)} />}
               </Card>
             </Pressable>
           ))}
