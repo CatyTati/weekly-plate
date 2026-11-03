@@ -51,6 +51,14 @@ export default function Settings() {
         </Card>
       )}
 
+      <Card style={{ gap: 10 }}>
+        <T v="label" c="muted">{t('themeLabel')}</T>
+        <Row gap={6}>
+          {['auto', 'light', 'dark'].map(k => <Pill key={k} label={t('theme_' + k)} active={(state.theme || 'auto') === k} onPress={() => set({ theme: k })} />)}
+        </Row>
+        <T v="caption" c="muted">{t('themeHint')}</T>
+      </Card>
+
       <Card style={{ gap: 12 }}>
         <T v="label" c="muted">{t('household')}</T>
         <Row gap={6} style={{ flexWrap: 'wrap' }}>

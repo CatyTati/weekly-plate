@@ -23,6 +23,7 @@ const DEFAULT = {
   saved: {},
   recipeComments: {},
   homeShows: { stories: true },
+  theme: 'auto', // auto follows the phone; or light, dark
 };
 
 const Ctx = createContext(null);

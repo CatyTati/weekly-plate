@@ -1,11 +1,11 @@
 import React, { useMemo, useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, View, useColorScheme } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useFonts, Rubik_300Light, Rubik_400Regular, Rubik_500Medium } from '@expo-google-fonts/rubik';
 import { StoreProvider, useStore } from './src/store';
 import { NavCtx, MAIN_TABS } from './src/nav';
-import { color } from './src/theme';
+import { applyTheme, color } from './src/theme';
 import { TabBar } from './src/components/ui';
 import Auth, { NewPassword } from './src/screens/Auth';
 import Onboarding from './src/screens/Onboarding';
@@ -26,6 +26,9 @@ import Menu from './src/screens/Menu';
 
 function Root() {
   const { ready, state, user, recovery, rtl, signedIn } = useStore();
+  const system = useColorScheme();
+  const dark = state.theme === 'dark' || (state.theme !== 'light' && system === 'dark');
+  applyTheme(dark); // before anything below reads `color`
   const [view, setView] = useState('home'); // home | week | feed | shop | recipes | community | settings
   const [stack, setStack] = useState([]); // screens opened on top of a view
   const [menu, setMenu] = useState(false);
@@ -67,8 +70,9 @@ function Root() {
   return (
     // `direction` mirrors every row for Hebrew without restarting the app.
     <NavCtx.Provider value={signedInApp ? nav : {}}>
-      <View style={{ flex: 1, backgroundColor: color.bg, direction: rtl ? 'rtl' : 'ltr' }}>
-        <StatusBar style="dark" />
+      {/* A new key draws every screen again with the new palette. */}
+      <View key={dark ? 'dark' : 'light'} style={{ flex: 1, backgroundColor: color.bg, direction: rtl ? 'rtl' : 'ltr' }}>
+        <StatusBar style={dark ? 'light' : 'dark'} />
         <View style={{ flex: 1 }}>{body}</View>
         {signedInApp && !top ? <TabBar tab={MAIN_TABS.includes(view) ? view : null} onTab={k => { if (k === 'feed') setFeedOf(null); nav.go(k); }} /> : null}
         {signedInApp ? <Menu visible={menu} onClose={() => setMenu(false)} current={top ? null : view} go={nav.go} openScreen={nav.open} /> : null}

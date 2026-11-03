@@ -2,7 +2,7 @@ import React, { useRef, useState } from 'react';
 import { Dimensions, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useStore } from '../store';
 import { LANGS, TAG_KEYS } from '../logic';
-import { color, radius, shadow, tagColor } from '../theme';
+import { color, onThemeChange, radius, shadow, tagColor } from '../theme';
 import { Button, Card, Checkbox, Field, Header, Icon, Row, Screen, Stepper, T } from '../components/ui';
 
 const ICON = { kids: 'kid', budget: 'coin', prep: 'pot', quick: 'clock' };
@@ -45,12 +45,15 @@ export function LanguageSwitch() {
   );
 }
 
-const st = StyleSheet.create({
+let st;
+const makeStyles = () => StyleSheet.create({
   langButton: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 8, backgroundColor: color.surface, borderWidth: 1, borderColor: color.line, borderRadius: radius.pill, paddingVertical: 8, paddingHorizontal: 14 },
   flag: { fontSize: 20 },
   langMenu: { position: 'absolute', minWidth: 170, padding: 6, gap: 2, backgroundColor: color.surface, borderRadius: 16, ...shadow },
   langItem: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, paddingHorizontal: 12, borderRadius: 12 },
 });
+onThemeChange(() => { st = makeStyles(); });
+
 
 export default function Onboarding({ onDone }) {
   const { state, t, set, toggleMode, buildWeek } = useStore();

@@ -12,9 +12,9 @@ import PhotoSlider from '../components/PhotoSlider';
 
 function NoPhoto() {
   return (
-    <View style={{ height: 220, borderRadius: 28, backgroundColor: '#F6E3DA', alignItems: 'center', justifyContent: 'center' }}>
+    <View style={{ height: 220, borderRadius: 28, backgroundColor: color.plate, alignItems: 'center', justifyContent: 'center' }}>
       <View style={{ width: 150, height: 150, borderRadius: 75, backgroundColor: color.surface, alignItems: 'center', justifyContent: 'center' }}>
-        <View style={{ width: 110, height: 110, borderRadius: 55, backgroundColor: '#E59A86' }} />
+        <View style={{ width: 110, height: 110, borderRadius: 55, backgroundColor: color.plateDot }} />
       </View>
     </View>
   );

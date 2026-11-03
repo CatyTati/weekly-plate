@@ -7,7 +7,7 @@ import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { color, font, radius, shadow, tagColor, type } from '../theme';
+import { color, font, onThemeChange, radius, shadow, tagColor, type } from '../theme';
 import { useStore } from '../store';
 import { useNav } from '../nav';
 
@@ -32,6 +32,7 @@ const ICONS = {
   check: <Path d="M20 6 9 17l-5-5" />,
   plus: <Path d="M12 5v14M5 12h14" />,
   minus: <Path d="M5 12h14" />,
+  trash: <Path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6" />,
   back: <Path d="m15 18-6-6 6-6" />,
   share: <Path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7M16 6l-4-4-4 4M12 2v13" />,
   camera: <><Path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" /><Circle cx="12" cy="13" r="4" /></>,
@@ -204,7 +205,8 @@ export function Avatar({ letter, fg = 'kids', bg = 'kidsSoft', size = 44, ring }
   );
 }
 
-export const s = StyleSheet.create({
+export let s;
+const makeStyles = () => StyleSheet.create({
   screen: { flex: 1, backgroundColor: color.bg },
   glowWrap: { ...StyleSheet.absoluteFillObject, overflow: 'hidden' },
   glow: { position: 'absolute', width: 320, height: 320, borderRadius: 160, opacity: 0.75 },
@@ -224,3 +226,5 @@ export const s = StyleSheet.create({
   tabbar: { backgroundColor: color.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 8, ...shadow, shadowOffset: { width: 0, height: -4 } },
   tab: { flex: 1, alignItems: 'center', gap: 3, paddingVertical: 4 },
 });
+onThemeChange(() => { s = makeStyles(); });
+

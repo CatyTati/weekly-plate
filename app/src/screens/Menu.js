@@ -7,7 +7,7 @@ import { feedFor, firstName } from '../logic';
 import { LanguageSwitch } from './Onboarding';
 import { isDemo } from '../auth';
 import { myConnections } from '../social';
-import { color, radius } from '../theme';
+import { color, onThemeChange, radius } from '../theme';
 import { Avatar, Icon, RoundButton, Row, T } from '../components/ui';
 
 function Item({ icon, label, active, danger, onPress, extra }) {
@@ -93,10 +93,13 @@ export default function Menu({ visible, onClose, current, go, openScreen }) {
   );
 }
 
-const st = StyleSheet.create({
+let st;
+const makeStyles = () => StyleSheet.create({
   drawer: { position: 'absolute', top: 0, bottom: 0, backgroundColor: color.surface, shadowColor: '#332633', shadowOpacity: 0.18, shadowRadius: 30, elevation: 8 },
   roundLeft: { borderTopLeftRadius: 28, borderBottomLeftRadius: 28 },
   roundRight: { borderTopRightRadius: 28, borderBottomRightRadius: 28 },
   item: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 14, paddingVertical: 12, borderRadius: 16 },
   badge: { backgroundColor: color.kidsSoft, borderRadius: radius.pill, paddingHorizontal: 8, paddingVertical: 2 },
 });
+onThemeChange(() => { st = makeStyles(); });
+

@@ -11,7 +11,7 @@ const PICTURE = 130;
 const likeKey = r => `recipe:${r.id}`; // feed posts share state.liked
 const describe = (r, lang) => pick(r.desc || RECIPE_DESC[r.id], lang);
 
-function Plate({ height, colors = ['#F6E3DA', '#E59A86'] }) {
+function Plate({ height, colors = [color.plate, color.plateDot] }) {
   return (
     <View style={{ height, borderRadius: 18, backgroundColor: colors[0], alignItems: 'center', justifyContent: 'center' }}>
       <View style={{ width: height * 0.7, height: height * 0.7, borderRadius: height, backgroundColor: color.surface, alignItems: 'center', justifyContent: 'center' }}>
