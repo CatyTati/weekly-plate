@@ -3,8 +3,8 @@
 // every row. Under that direction 'left' means the start of the line, so 'left'
 // puts Hebrew on the right and 'right' would put it on the left. TextInput doesn't
 // swap like this, so Field still asks for 'right'.
-import React from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { Keyboard, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { color, font, onThemeChange, radius, shadow, tagColor, type } from '../theme';
@@ -67,19 +67,43 @@ export function Icon({ name, c = 'ink', size = 22, w = 1.9, flip }) {
 
 export function Screen({ children, scroll = true, header, footer, scrollRef }) {
   const Body = scroll ? ScrollView : View;
+  const own = useRef(null);
+  const ref = scrollRef || own;
+  const offset = useRef(0); // how far the page is scrolled
+  // When the keyboard opens, the page gets shorter. Scroll so the field being typed in is in view.
+  useEffect(() => {
+    if (!scroll) return undefined;
+    const sub = Keyboard.addListener('keyboardDidShow', () => setTimeout(() => {
+      const input = TextInput.State.currentlyFocusedInput?.();
+      const page = ref.current;
+      if (!input?.measureInWindow || !page?.measureInWindow) return;
+      input.measureInWindow((ix, iy, iw, ih) => page.measureInWindow((px, py, pw, ph) => {
+        const below = iy + ih + 16 - (py + ph); // hidden under the bottom of the page
+        const above = py + 16 - iy; // hidden above the top
+        if (below > 0) page.scrollTo({ y: offset.current + below, animated: true });
+        else if (above > 0) page.scrollTo({ y: Math.max(0, offset.current - above), animated: true });
+      }));
+    }, 50));
+    return () => sub.remove();
+  }, [scroll, ref]);
   return (
     <View style={s.screen}>
       <View pointerEvents="none" style={s.glowWrap}>
         <View style={[s.glow, { backgroundColor: color.glowPink, right: -90, top: -150 }]} />
         <View style={[s.glow, { backgroundColor: color.glowGreen, left: -110, top: -120 }]} />
       </View>
-      <SafeAreaView edges={['top']} style={{ flex: 1 }}>
-        {header ? <View style={s.header}>{header}</View> : null}
-        <Body ref={scroll ? scrollRef : undefined} style={{ flex: 1 }} contentContainerStyle={scroll ? s.content : undefined} keyboardShouldPersistTaps="handled">
-          {scroll ? children : <View style={[s.content, { flex: 1 }]}>{children}</View>}
-        </Body>
-        {footer ? <View style={s.footer}>{footer}</View> : null}
-      </SafeAreaView>
+      {/* The keyboard pushes the footer up and shrinks the page, and the page scrolls to the field being typed in. */}
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <SafeAreaView edges={['top']} style={{ flex: 1 }}>
+          {header ? <View style={s.header}>{header}</View> : null}
+          <Body ref={scroll ? ref : undefined} style={{ flex: 1 }} contentContainerStyle={scroll ? s.content : undefined}
+            keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive"
+            onScroll={scroll ? e => { offset.current = e.nativeEvent.contentOffset.y; } : undefined} scrollEventThrottle={16}>
+            {scroll ? children : <View style={[s.content, { flex: 1 }]}>{children}</View>}
+          </Body>
+          {footer ? <View style={s.footer}>{footer}</View> : null}
+        </SafeAreaView>
+      </KeyboardAvoidingView>
     </View>
   );
 }
