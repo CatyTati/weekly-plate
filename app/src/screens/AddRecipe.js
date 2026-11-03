@@ -2,7 +2,7 @@ import React, { useRef, useState } from 'react';
 import { Image, Pressable, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useStore } from '../store';
-import { AISLE_ORDER, LIMITS, TAG_KEYS, U, UNITS, aisleName, unitName, validateRecipe } from '../logic';
+import { LIMITS, TAG_KEYS, U, UNITS, unitName, validateRecipe } from '../logic';
 import { color } from '../theme';
 import { Button, Field, Icon, Pill, Row, RoundButton, Screen, T } from '../components/ui';
 
@@ -120,10 +120,7 @@ export default function AddRecipe({ back }) {
                   onPress={() => form.ing.length > 1 && update({ ing: form.ing.filter((_, j) => j !== i) })} />
               </Row>
               <Row gap={6} style={{ flexWrap: 'wrap' }}>
-                {UNITS.slice(0, 6).map(u => <Pill key={u} label={unitName(u, lang)} active={r.u === u} onPress={() => setRow(i, { u })} />)}
-              </Row>
-              <Row gap={6} style={{ flexWrap: 'wrap' }}>
-                {AISLE_ORDER.map(a => <Pill key={a} label={aisleName(a, lang)} active={r.a === a} onPress={() => setRow(i, { a })} />)}
+                {UNITS.slice(0, 7).map(u => <Pill key={u} label={unitName(u, lang)} active={r.u === u} onPress={() => setRow(i, { u })} />)}
               </Row>
             </View>
           );
