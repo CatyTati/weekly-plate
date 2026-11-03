@@ -30,7 +30,7 @@ function WeekCalendar({ month, setMonth, selected, onPick }) {
         {arrow(1, t('nextMonth'))}
       </Row>
       <Row>
-        {[0, 1, 2, 3, 4, 5, 6].map(d => <T key={d} v="label" c="muted" center style={{ flex: 1 }}>{dayName(d, lang).slice(0, lang === 'he' ? 1 : 2)}</T>)}
+        {[0, 1, 2, 3, 4, 5, 6].map(d => <T key={d} v="label" c="muted" center style={{ flex: 1 }}>{lang === 'he' ? 'אבגדהוש'[d] : dayName(d, lang).slice(0, 2)}</T>)}
       </Row>
       {weeks.map(start => {
         const key = weekKey(start);

@@ -5,6 +5,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useStore } from '../store';
 import { feedFor, firstName } from '../logic';
 import { LanguageSwitch } from './Onboarding';
+import { isDemo } from '../auth';
+import { myConnections } from '../social';
 import { color, radius } from '../theme';
 import { Avatar, Icon, RoundButton, Row, T } from '../components/ui';
 
@@ -25,6 +27,12 @@ export default function Menu({ visible, onClose, current, go, openScreen }) {
   const w = Math.min(320, width * 0.82);
   const x = useRef(new Animated.Value(0)).current;
   const [mounted, setMounted] = useState(visible);
+  const [counts, setCounts] = useState(null);
+
+  useEffect(() => {
+    if (!visible || isDemo) return;
+    myConnections(user?.id).then(c => setCounts({ followers: c.followers.length, following: c.following.length })).catch(() => {});
+  }, [visible, user?.id]);
   const [confirmOut, setConfirmOut] = useState(false);
 
   useEffect(() => {
@@ -53,6 +61,11 @@ export default function Menu({ visible, onClose, current, go, openScreen }) {
               <View style={{ flex: 1 }}>
                 <T v="heading" numberOfLines={1}>{name}</T>
                 <T v="caption" c="muted" numberOfLines={1}>{user?.email}</T>
+                {counts ? (
+                  <Pressable onPress={() => { onClose(); openScreen('people', { tab: 'followers' }); }} hitSlop={6} accessibilityRole="button">
+                    <T v="caption" c="accent">{t('myFollow', { a: counts.followers, b: counts.following })}</T>
+                  </Pressable>
+                ) : null}
               </View>
               <RoundButton icon="close" bg="bg" c="muted" size={36} label={t('closeMenu')} onPress={onClose} />
             </Row>
@@ -62,6 +75,7 @@ export default function Menu({ visible, onClose, current, go, openScreen }) {
               extra={fresh ? <View style={st.badge}><T v="label" c="kids">{t('newPosts', { n: fresh })}</T></View> : null} />
             <Item icon="shop" label={t('tab_shop')} active={current === 'shop'} onPress={nav('shop')} />
             <View style={{ height: 1, backgroundColor: color.line, marginVertical: 10 }} />
+            <Item icon="users" label={t('people_title')} onPress={() => { onClose(); openScreen('people', { tab: 'followers' }); }} />
             <Item icon="gear" label={t('settings')} active={current === 'settings'} onPress={nav('settings')} />
             <View style={st.item}>
               <Icon name="globe" c="muted" />

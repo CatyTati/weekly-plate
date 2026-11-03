@@ -5,6 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { R, COOKS, makeT, isRtl, planWeek, swapDay as swap, weekKey } from './logic';
 import * as Linking from 'expo-linking';
 import { currentUser, handleAuthLink, isRecoveryLink, onAuthChange, signOut } from './auth';
+import { syncProfileName } from './social';
 
 const KEY = 'weekly-plate/v1';
 const DEFAULT = {
@@ -59,6 +60,8 @@ export function StoreProvider({ children }) {
     return () => { links.remove(); unsubscribe(); };
   }, []);
 
+  useEffect(() => { syncProfileName(user).catch(() => {}); }, [user]);
+
   useEffect(() => {
     if (loaded.current) AsyncStorage.setItem(KEY, JSON.stringify(state)).catch(() => {});
   }, [state]);
@@ -78,7 +81,13 @@ export function StoreProvider({ children }) {
     addRecipe: r => setState(s => ({ ...s, custom: [...s.custom, r] })),
     deleteRecipe: id => setState(s => withPlan({ ...s, custom: s.custom.filter(r => r.id !== id) }, s.plan.map(p => (p === id ? null : p)))),
     toggleFollow: id => setState(s => ({ ...s, following: s.following.includes(id) ? s.following.filter(x => x !== id) : [...s.following, id] })),
-    copyPlan: cookId => setState(s => withPlan({ ...s, checked: {} }, COOKS.find(c => c.id === cookId).plan.slice())),
+    // Copies a cook's week into a week of ours. In this week, only today and later change.
+    copyPlan: (cookId, key = weekKey()) => setState(s => {
+      const from = key === weekKey() ? new Date().getDay() : 0;
+      const plan = (s.weeks[key] || []).slice();
+      COOKS.find(c => c.id === cookId).plan.forEach((id, d) => { if (d >= from) plan[d] = id; });
+      return withPlan({ ...s, checked: key === weekKey() ? {} : s.checked }, plan, key);
+    }),
     toggleLike: id => setState(s => ({ ...s, liked: { ...s.liked, [id]: !s.liked[id] } })),
     addComment: (id, comment) => setState(s => ({ ...s, recipeComments: { ...s.recipeComments, [id]: [...(s.recipeComments[id] || []), comment] } })),
     toggleSave: id => setState(s => ({ ...s, saved: { ...s.saved, [id]: !s.saved[id] } })),

@@ -1,18 +1,83 @@
 // Feed: posts from cooks you follow, newest first, like Instagram.
 import React, { useState } from 'react';
-import { FlatList, Pressable, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { FlatList, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore } from '../store';
 import { useNav } from '../nav';
-import { COOKS, cost, dayName, feedFor, money, num, pick, timeAgo } from '../logic';
+import { COOKS, cost, dayName, feedFor, keyToDate, money, num, pick, thisSunday, timeAgo, weekKey, weekRangeLabel } from '../logic';
 import { color, tagColor } from '../theme';
 import { Avatar, Button, Card, Icon, MenuButton, Pill, Row, RoundButton, T, Tag, s as ui } from '../components/ui';
 import { Stories } from './Home';
+import AddToWeekSheet, { SourceInfo } from './AddToWeek';
+
+/** Asks which week to copy a cook's week into, and says what will change. */
+function CopyWeekSheet({ cook, onClose }) {
+  const { state, t, rtl, byId, copyPlan } = useStore();
+  const { showWeek } = useNav();
+  const insets = useSafeAreaInsets();
+  const lang = state.lang;
+  const today = new Date().getDay();
+  const weeks = [0, 1, 2, 3].map(i => {
+    const start = thisSunday(); start.setDate(start.getDate() + 7 * i);
+    return { i, key: weekKey(start) };
+  });
+  const [chosen, setChosen] = useState(weeks[1].key);
+  const name = pick(cook.name, lang);
+  const weekName = i => (i === 0 ? t('thisWeek') : i === 1 ? t('nextWeek') : t('inWeeks', { n: num(i, lang) }));
+  const replaced = (key, i) => (state.weeks[key] || []).filter((id, d) => id && (i > 0 || d >= today)).length;
+
+  return (
+    <Modal visible transparent animationType="slide" onRequestClose={onClose}>
+      <View style={{ flex: 1, justifyContent: 'flex-end', direction: rtl ? 'rtl' : 'ltr' }}>
+        <Pressable style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(58,51,64,0.28)' }]} accessibilityLabel={t('close')} onPress={onClose} />
+        <View style={{ backgroundColor: color.bg, borderTopLeftRadius: 28, borderTopRightRadius: 28, maxHeight: '88%', marginTop: insets.top }}>
+          <ScrollView contentContainerStyle={{ padding: 22, paddingBottom: 22 + insets.bottom, gap: 14 }}>
+          <T v="title">{t('copyTitle', { n: name })}</T>
+          <SourceInfo cook={cook} whole />
+          <T c="muted">{t('copyExplain', { n: name })}</T>
+          <Card style={{ gap: 6, paddingVertical: 12 }}>
+            {cook.plan.map((id, d) => (
+              <Row key={d} gap={10}>
+                <T v="label" c="accent" style={{ minWidth: 64 }}>{dayName(d, lang)}</T>
+                <T v="caption" style={{ flex: 1 }} numberOfLines={1}>{pick(byId(id)?.name, lang)}</T>
+              </Row>
+            ))}
+          </Card>
+          <T v="bodyStrong">{t('copyWhich')}</T>
+          <View style={{ gap: 8 }}>
+            {weeks.map(({ i, key }) => {
+              const on = key === chosen;
+              const n = replaced(key, i);
+              return (
+                <Pressable key={key} onPress={() => setChosen(key)} accessibilityRole="radio" accessibilityState={{ checked: on }}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderRadius: 16, borderWidth: 2, borderColor: on ? color.accent : color.line, backgroundColor: on ? color.accentSoft : color.surface }}>
+                  <View style={{ width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: on ? color.accent : color.line, alignItems: 'center', justifyContent: 'center' }}>
+                    {on ? <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: color.accent }} /> : null}
+                  </View>
+                  <View style={{ flex: 1, gap: 2 }}>
+                    <T v="bodyStrong">{weekName(i)} · {weekRangeLabel(keyToDate(key), lang)}</T>
+                    <T v="caption" c={n ? 'error' : 'muted'}>
+                      {[i === 0 ? t('copyFromToday') : null, n ? t('copyReplaces', { n: num(n, lang) }) : t('copyEmpty')].filter(Boolean).join(' · ')}
+                    </T>
+                  </View>
+                </Pressable>
+              );
+            })}
+          </View>
+          <Button label={t('copyDo')} onPress={() => { copyPlan(cook.id, chosen); onClose(); showWeek(chosen); }} />
+          <Pressable onPress={onClose} hitSlop={8} style={{ alignSelf: 'center' }}><T v="bodyStrong" c="muted">{t('cancel')}</T></Pressable>
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  );
+}
 
 function Post({ post }) {
-  const { state, t, byId, toggleLike, toggleSave, setDay, copyPlan } = useStore();
+  const { state, t, byId, toggleLike, toggleSave } = useStore();
   const { open, go } = useNav();
   const [picking, setPicking] = useState(false);
+  const [copying, setCopying] = useState(false);
   const lang = state.lang;
   const cook = COOKS.find(c => c.id === post.cook);
   const [fg, bg] = tagColor[cook.modes[0]];
@@ -58,18 +123,13 @@ function Post({ post }) {
         </Pressable>
         <View style={{ flex: 1 }} />
         {post.kind === 'week'
-          ? <Pill label={t('copyPlan')} active c="accent" soft="accentSoft" onPress={() => { copyPlan(cook.id); go('week'); }} />
-          : <Pill label={t('addToWeek')} active={!picking} c="accent" soft="accentSoft" onPress={() => setPicking(p => !p)} />}
+          ? <Pill label={t('copyWeekBtn')} active c="accent" soft="accentSoft" onPress={() => setCopying(true)} />
+          : <Pill label={t('addToWeek')} active c="accent" soft="accentSoft" onPress={() => setPicking(true)} />}
       </Row>
 
-      {picking && recipe ? (
-        <View style={{ paddingHorizontal: 16, gap: 8 }}>
-          <T v="label" c="muted">{t('pickDay')}</T>
-          <Row gap={6} style={{ flexWrap: 'wrap' }}>
-            {[0, 1, 2, 3, 4, 5, 6].map(d => <Pill key={d} label={dayName(d, lang)} onPress={() => { setDay(d, recipe.id); setPicking(false); }} />)}
-          </Row>
-        </View>
-      ) : null}
+      {copying ? <CopyWeekSheet cook={cook} onClose={() => setCopying(false)} /> : null}
+
+      {picking && recipe ? <AddToWeekSheet id={recipe.id} cook={cook} onClose={() => setPicking(false)} /> : null}
 
       <View style={{ paddingHorizontal: 16, gap: 6 }}>
         <T v="bodyStrong">{t('likes', { n: num(post.likes + (liked ? 1 : 0), lang) })} · {t('saves', { n: num(post.saves + (saved ? 1 : 0), lang) })}</T>

@@ -19,6 +19,7 @@ import RecipeDetail from './src/screens/RecipeDetail';
 import AddRecipe from './src/screens/AddRecipe';
 import Community from './src/screens/Community';
 import Comments from './src/screens/Comments';
+import People from './src/screens/People';
 import Settings from './src/screens/Settings';
 import Menu from './src/screens/Menu';
 
@@ -36,6 +37,7 @@ function Root() {
     back: () => setStack(s => s.slice(0, -1)),
     openMenu: () => setMenu(true),
     showFeedOf: id => { setFeedOf(id); setStack([]); setView('feed'); },
+    showWeek: week => { setWeekView(v => ({ ...v, week, picking: false })); setStack([]); setView('week'); },
   }), []);
 
   if (!ready) return <View style={{ flex: 1, backgroundColor: color.bg, alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator color={color.accent} /></View>;
@@ -47,6 +49,7 @@ function Root() {
   else if (!state.onboarded) body = <Onboarding />;
   else if (top?.screen === 'recipe') body = <RecipeDetail id={top.params.id} back={nav.back} />;
   else if (top?.screen === 'pick') body = <PickRecipe week={top.params.week} day={top.params.day} back={nav.back} />;
+  else if (top?.screen === 'people') body = <People tab={top.params.tab} back={nav.back} />;
   else if (top?.screen === 'comments') body = <Comments id={top.params.id} back={nav.back} />;
   else if (top?.screen === 'add') body = <AddRecipe back={nav.back} />;
   else if (top?.screen === 'prep') body = <Prep back={nav.back} />;
