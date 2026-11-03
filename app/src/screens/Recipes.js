@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { Image, Pressable, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { useStore } from '../store';
 import { TAG_KEYS, cost, dayName, hasPrice, money, num, pick } from '../logic';
 import { RECIPE_DESC } from '../strings2';
 import { color } from '../theme';
 import { Button, Card, Field, Header, Icon, Pill, Row, RoundButton, Screen, T, Tag } from '../components/ui';
+import PhotoSlider from '../components/PhotoSlider';
 
 const PICTURE = 130;
 const likeKey = r => `recipe:${r.id}`; // feed posts share state.liked
@@ -39,9 +40,7 @@ export function RecipeList({ open, onPick }) {
       {list.map(r => (
         <Pressable key={r.id} onPress={() => (onPick ? onPick(r.id) : open('recipe', { id: r.id }))}>
           <Card style={{ gap: 12, paddingTop: 12 }}>
-            {r.photos?.[0]
-              ? <Image source={{ uri: r.photos[0] }} style={{ height: PICTURE, borderRadius: 18 }} />
-              : <Plate height={PICTURE} />}
+            <PhotoSlider photos={r.photos} height={PICTURE} radius={18} empty={<Plate height={PICTURE} />} />
             <Row gap={16}>
               <Pressable onPress={() => toggleLike(likeKey(r))} hitSlop={8} accessibilityRole="button" accessibilityState={{ selected: !!state.liked[likeKey(r)] }} accessibilityLabel={t('like')}>
                 <Row gap={6}>
