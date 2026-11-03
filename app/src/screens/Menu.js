@@ -1,9 +1,10 @@
-// Side menu: profile, every section, settings, language, log out.
+// Side menu: profile, the four main sections, settings, language, log out.
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useStore } from '../store';
-import { feedFor, firstName, LANGS } from '../logic';
+import { feedFor, firstName } from '../logic';
+import { LanguageSwitch } from './Onboarding';
 import { color, radius } from '../theme';
 import { Avatar, Icon, RoundButton, Row, T } from '../components/ui';
 
@@ -19,7 +20,7 @@ function Item({ icon, label, active, danger, onPress, extra }) {
 }
 
 export default function Menu({ visible, onClose, current, go, openScreen }) {
-  const { state, user, t, rtl, set, logout } = useStore();
+  const { state, user, t, rtl, logout } = useStore();
   const { width } = useWindowDimensions();
   const w = Math.min(320, width * 0.82);
   const x = useRef(new Animated.Value(0)).current;
@@ -37,7 +38,6 @@ export default function Menu({ visible, onClose, current, go, openScreen }) {
   const translateX = x.interpolate({ inputRange: [0, 1], outputRange: [hidden, 0] });
   const fresh = feedFor(state.following).filter(p => p.hours < 24).length;
   const nav = view => () => { onClose(); go(view); };
-  const nextLang = () => { const i = LANGS.findIndex(l => l.k === state.lang); set({ lang: LANGS[(i + 1) % LANGS.length].k }); };
   const name = user?.name || firstName(user);
 
   return (
@@ -61,13 +61,13 @@ export default function Menu({ visible, onClose, current, go, openScreen }) {
             <Item icon="feed" label={t('feed')} active={current === 'feed'} onPress={nav('feed')}
               extra={fresh ? <View style={st.badge}><T v="label" c="kids">{t('newPosts', { n: fresh })}</T></View> : null} />
             <Item icon="shop" label={t('tab_shop')} active={current === 'shop'} onPress={nav('shop')} />
-            <Item icon="pot" label={t('tab_prep')} onPress={() => { onClose(); openScreen('prep'); }} />
-            <Item icon="book" label={t('myRecipes')} active={current === 'recipes'} onPress={nav('recipes')} />
-            <Item icon="users" label={t('cooksToFollow')} active={current === 'community'} onPress={nav('community')} />
             <View style={{ height: 1, backgroundColor: color.line, marginVertical: 10 }} />
             <Item icon="gear" label={t('settings')} active={current === 'settings'} onPress={nav('settings')} />
-            <Item icon="globe" label={t('language')} onPress={nextLang}
-              extra={<View style={st.chip}><T v="label" c="muted">{LANGS.find(l => l.k === state.lang).label}</T></View>} />
+            <View style={st.item}>
+              <Icon name="globe" c="muted" />
+              <T style={{ flex: 1 }}>{t('language')}</T>
+              <LanguageSwitch />
+            </View>
             <View style={{ flex: 1, minHeight: 24 }} />
             <Item icon="logout" danger label={confirmOut ? t('logoutConfirm') : t('logout')}
               onPress={() => { if (confirmOut) { onClose(); logout(); } else setConfirmOut(true); }} />
@@ -84,5 +84,4 @@ const st = StyleSheet.create({
   roundRight: { borderTopRightRadius: 28, borderBottomRightRadius: 28 },
   item: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 14, paddingVertical: 12, borderRadius: 16 },
   badge: { backgroundColor: color.kidsSoft, borderRadius: radius.pill, paddingHorizontal: 8, paddingVertical: 2 },
-  chip: { backgroundColor: color.bg, borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 3 },
 });
