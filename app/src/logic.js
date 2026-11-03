@@ -1,11 +1,10 @@
 // Pure app logic (no React): translation helpers, quantities, cost,
 // weekly planner, shopping list and recipe validation.
 // Kept free of React Native imports so it runs under plain Node tests.
-import { S, DAYS, AISLES, AISLE_ORDER, TAG_KEYS, U, UNITS, UNIT_T, ING, R, COOKS } from './data.js';
+import { S, DAYS, AISLES, AISLE_ORDER, TAG_KEYS, U, UNITS, UNIT_T, ING } from './data.js';
 import { STRINGS2 } from './strings2.js';
-import { POSTS } from './feed.js';
 
-export { DAYS, AISLES, AISLE_ORDER, TAG_KEYS, U, UNITS, R, COOKS, POSTS };
+export { DAYS, AISLES, AISLE_ORDER, TAG_KEYS, U, UNITS };
 
 export const LANGS = [
   { k: 'he', label: 'עברית', rtl: true, locale: 'he-IL' },
@@ -215,11 +214,5 @@ export function timeAgo(hours, t) {
   if (hours < 24) return t('hoursAgo', { n: Math.max(1, Math.round(hours)) });
   const d = Math.floor(hours / 24);
   return d === 1 ? t('yesterday') : t('daysAgo', { n: d });
-}
-/** Posts from followed cooks, newest first; optionally only one cook. */
-export function feedFor(following, onlyCook = null, posts = POSTS) {
-  return posts
-    .filter(p => following.includes(p.cook) && (!onlyCook || p.cook === onlyCook))
-    .sort((a, b) => a.hours - b.hours);
 }
 export const firstName = user => ((user?.name || user?.email || '').trim().split(/[\s@]/)[0] || '');

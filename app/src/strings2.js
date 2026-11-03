@@ -69,21 +69,4 @@ export const STRINGS2 = {
 };
 
 // Short descriptions of the built-in recipes, by recipe id.
-export const RECIPE_DESC = {
-  shak: { he: 'ביצים רכות ברוטב עגבניות ופלפלים חם, עם לחם טרי לניגוב.', en: 'Soft eggs in a warm tomato and pepper sauce, with fresh bread for dipping.', ru: 'Нежные яйца в тёплом соусе из томатов и перца, со свежим хлебом.' },
-  pasta: { he: 'רוטב עגבניות סמיך ועשיר בחלבון, ארוחה משביעה וזולה לכל המשפחה.', en: 'A thick, protein-rich tomato sauce. A filling, cheap dinner for the whole family.', ru: 'Густой томатный соус с белком. Сытный и недорогой ужин для всей семьи.' },
-  chicken: { he: 'שוקיים זהובות ותפוחי אדמה פריכים בתבנית אחת. התנור עושה את העבודה.', en: 'Golden drumsticks and crisp potatoes in one tray. The oven does the work.', ru: 'Золотистые голени и хрустящий картофель на одном противне. Всё делает духовка.' },
-  kofta: { he: 'קציצות רכות ברוטב עגבניות ביתי, מוגשות עם אורז. מעולות גם למחרת.', en: 'Tender meatballs in homemade tomato sauce, served with rice. Even better the next day.', ru: 'Нежные тефтели в домашнем томатном соусе с рисом. На следующий день ещё вкуснее.' },
-  curry: { he: 'קארי צמחוני מנחם עם חומוס ובטטה, מתוק וחריף בעדינות.', en: 'A comforting vegetarian curry with chickpeas and sweet potato, gently sweet and spiced.', ru: 'Уютное вегетарианское карри с нутом и бататом, мягкое и слегка пряное.' },
-  stir: { he: 'עוף ונודלס מוקפצים על אש גבוהה, מהיר וטעים אחרי יום ארוך.', en: 'Chicken and noodles tossed over high heat, quick and tasty after a long day.', ru: 'Курица с лапшой, обжаренные на сильном огне. Быстро и вкусно после долгого дня.' },
-  quesa: { he: 'טורטיות פריכות עם שעועית וגבינה נמסה. מוכן תוך רבע שעה.', en: 'Crisp tortillas with beans and melted cheese, ready in a quarter of an hour.', ru: 'Хрустящие тортильи с фасолью и тянущимся сыром. Готово за пятнадцать минут.' },
-  soup: { he: 'מרק עדשים כתומות סמיך ומחמם, בדיוק מה שצריך בערב קריר.', en: 'A thick, warming red lentil soup, just right for a cool evening.', ru: 'Густой согревающий суп из красной чечевицы, в самый раз для прохладного вечера.' },
-  salmon: { he: 'סלמון רך מהתנור לצד אורז, ארוחה קלה עם הרגשה של חג.', en: 'Tender oven-baked salmon with rice. A light dinner that feels special.', ru: 'Нежный лосось из духовки с рисом. Лёгкий ужин с праздничным настроением.' },
-  pie: { he: 'מאפה ביתי של קישואים וגבינה, טוב חם וטוב גם קר.', en: 'A homely zucchini and cheese bake, just as good warm or cold.', ru: 'Домашняя запеканка из кабачков с сыром, вкусная и горячей, и холодной.' },
-  bolo: { he: 'ספגטי ברוטב בשר עשיר שמתבשל לאט. קלאסיקה שכולם אוהבים.', en: 'Spaghetti in a rich, slow-cooked meat sauce. A classic everyone loves.', ru: 'Спагетти с насыщенным мясным соусом медленного томления. Классика, которую любят все.' },
-  omelet: { he: 'חביתה, סלט קצוץ וטוסט. ארוחת ערב ישראלית פשוטה ומהירה.', en: 'An omelette, chopped salad and toast. A simple, quick Israeli-style dinner.', ru: 'Омлет, рубленый салат и тост. Простой и быстрый ужин по-израильски.' },
-  fried: { he: 'אורז מוקפץ עם ירקות וביצה, דרך מצוינת להשתמש באורז שנשאר.', en: 'Rice stir-fried with vegetables and egg. A great way to use up leftover rice.', ru: 'Жареный рис с овощами и яйцом. Отличный способ использовать оставшийся рис.' },
-  chili: { he: 'תבשיל בשר ושעועית חריף וסמיך, מושלם לבישול מראש.', en: 'A thick, spicy beef and bean stew, perfect for cooking ahead.', ru: 'Густое острое рагу из мяса и фасоли, идеально для готовки заранее.' },
-  schnitzel: { he: 'שניצל פריך מהתנור בלי טיגון, עם פירה רך. האהוב על הילדים.', en: 'Crisp oven-baked schnitzel with no frying, plus creamy mash. A kids’ favorite.', ru: 'Хрустящий шницель из духовки без жарки и нежное пюре. Любимое блюдо детей.' },
-  quinoa: { he: 'סלט צבעוני ומשביע עם קינואה, בטטה קלויה וחומוס.', en: 'A colorful, filling salad with quinoa, roasted sweet potato and chickpeas.', ru: 'Яркий сытный салат с киноа, печёным бататом и нутом.' },
-};
+

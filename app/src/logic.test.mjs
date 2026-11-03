@@ -1,9 +1,25 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { R, makeT, planWeek, swapDay, shoppingList, fmtQty, validateRecipe, prepPlan, cost, money, validateSignIn, validateSignUp, greetingKey, timeAgo, feedFor, firstName } from './logic.js';
+import { makeT, planWeek, swapDay, shoppingList, fmtQty, validateRecipe, prepPlan, cost, money, validateSignIn, validateSignUp, greetingKey, timeAgo, firstName } from './logic.js';
 
 const seeded = (seed = 1) => () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
 const t = makeT('en');
+
+// Recipes made up for these tests. Ingredient: [name, qty for 4, unit, aisle, ₪ per unit].
+const mk = (id, time, tags, ing, m = 'stove') => ({ id, name: id, time, m, tags, ing, custom: true });
+const eggs = ['ביצים', 8, 'יח׳', 'dairy', 1.2];
+const onion = ['בצל', 2, 'יח׳', 'veg', 1];
+const R = [
+  mk('Shakshuka', 20, ['quick', 'budget', 'kids'], [eggs, onion]),
+  mk('Omelette', 10, ['quick', 'kids'], [eggs]),
+  mk('Pasta', 20, ['quick', 'budget'], [['פסטה', 500, 'גרם', 'pantry', 0.01], onion]),
+  mk('Stir-fry', 20, ['quick'], [['חזה עוף', 600, 'גרם', 'meat', 0.04], onion]),
+  mk('Quesadilla', 15, ['quick', 'kids'], [['טורטיות', 8, 'יח׳', 'bakery', 1]]),
+  mk('Fried rice', 20, ['quick', 'budget'], [['אורז', 400, 'גרם', 'pantry', 0.01], eggs]),
+  mk('Drumsticks', 60, ['prep', 'kids'], [['שוקי עוף', 1500, 'גרם', 'meat', 0.03], ['תפוחי אדמה', 1000, 'גרם', 'veg', 0.005]], 'oven'),
+  mk('Curry', 30, ['prep', 'budget'], [['חומוס', 500, 'גרם', 'pantry', 0.01], onion]),
+  mk('Lentil soup', 40, ['prep', 'budget'], [['עדשים', 400, 'גרם', 'pantry', 0.01], onion]),
+];
 
 test('plan has 7 different dishes', () => {
   const p = planWeek(R, { kids: true }, seeded(3));
@@ -26,7 +42,7 @@ test('swap changes only that day', () => {
 });
 
 test('shopping list merges the same ingredient and scales with people', () => {
-  const two = R.filter(r => ['shak', 'omelet'].includes(r.id));
+  const two = R.filter(r => ['Shakshuka', 'Omelette'].includes(r.id));
   const eggs = shoppingList(two, 4).find(i => i.n === 'ביצים');
   assert.equal(eggs.q, 16);
   assert.equal(shoppingList(two, 2).find(i => i.n === 'ביצים').q, 8);
@@ -39,7 +55,7 @@ test('quantities are rounded and translated', () => {
 });
 
 test('cost scales with servings', () => {
-  const shak = R.find(r => r.id === 'shak');
+  const shak = R.find(r => r.id === 'Shakshuka');
   assert.ok(Math.abs(cost(shak, 8) - 2 * cost(shak, 4)) < 1e-9);
   assert.equal(money(1234.4, 'en'), '₪1,234');
 });
@@ -56,7 +72,7 @@ test('valid recipe passes', () => {
 
 test('validation catches each rule', () => {
   assert.equal(validateRecipe({ ...good, name: 'x' }, R, t).errors.name, t('eNameShort'));
-  assert.equal(validateRecipe({ ...good, name: 'Shakshuka with bread' }, R, t).errors.name, t('eNameDup'));
+  assert.equal(validateRecipe({ ...good, name: 'shakshuka' }, R, t).errors.name, t('eNameDup'));
   assert.equal(validateRecipe({ ...good, time: '3' }, R, t).errors.time, t('eTimeRange'));
   assert.equal(validateRecipe({ ...good, time: '20.5' }, R, t).errors.time, t('eTimeRange'));
   assert.equal(validateRecipe({ ...good, steps: 'Cook.' }, R, t).errors.steps, t('eStepsShort'));
@@ -72,8 +88,8 @@ test('kid note kept only with the kids tag', () => {
 });
 
 test('big cook groups oven and stove dishes', () => {
-  const p = prepPlan(R.filter(r => ['chicken', 'curry', 'soup'].includes(r.id)), 4);
-  assert.deepEqual(p.oven.map(r => r.id), ['chicken']);
+  const p = prepPlan(R.filter(r => ['Drumsticks', 'Curry', 'Lentil soup'].includes(r.id)), 4);
+  assert.deepEqual(p.oven.map(r => r.id), ['Drumsticks']);
   assert.equal(p.stove.length, 2);
   assert.ok(p.chop.length > 0);
 });
@@ -81,7 +97,7 @@ test('big cook groups oven and stove dishes', () => {
 test('every language has the strings the app uses', () => {
   for (const lang of ['he', 'en', 'ru']) {
     const tt = makeT(lang);
-    for (const k of ['app', 'obTitle', 'tab_week', 'eNameReq', 'copyPlan', 'openPrep', 'withGoogle', 'logout', 'feedEmpty', 'show_stories']) assert.notEqual(tt(k), k, `${lang}:${k}`);
+    for (const k of ['app', 'obTitle', 'tab_week', 'eNameReq', 'openPrep', 'withGoogle', 'logout', 'feedEmpty']) assert.notEqual(tt(k), k, `${lang}:${k}`);
   }
 });
 
@@ -105,27 +121,10 @@ test('greeting follows the time of day', () => {
   assert.equal(greetingKey(21), 'goodEvening');
 });
 
-test('feed shows only followed cooks, newest first', () => {
-  const f = feedFor(['noa', 'yossi']);
-  assert.ok(f.length > 0 && f.every(p => ['noa', 'yossi'].includes(p.cook)));
-  assert.deepEqual(f.map(p => p.hours), [...f.map(p => p.hours)].sort((a, b) => a - b));
-  assert.ok(feedFor(['noa'], 'noa').every(p => p.cook === 'noa'));
-  assert.deepEqual(feedFor([]), []);
-});
-
 test('time ago and first name', () => {
   assert.equal(timeAgo(2, t), t('hoursAgo', { n: 2 }));
   assert.equal(timeAgo(30, t), t('yesterday'));
   assert.equal(timeAgo(52, t), t('daysAgo', { n: 2 }));
   assert.equal(firstName({ name: 'Tanya Lukin' }), 'Tanya');
   assert.equal(firstName({ email: 'tanya@example.com' }), 'tanya');
-});
-
-test('every feed post points to a real cook and recipe', async () => {
-  const { POSTS, COOKS } = await import('./logic.js');
-  for (const p of POSTS) {
-    assert.ok(COOKS.some(c => c.id === p.cook), p.id);
-    if (p.kind === 'recipe') assert.ok(R.some(r => r.id === p.recipe), p.id);
-    for (const l of ['he', 'en', 'ru']) assert.ok(p.text[l], p.id + l);
-  }
 });

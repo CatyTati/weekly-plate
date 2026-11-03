@@ -2,14 +2,13 @@ import React, { useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { useStore } from '../store';
 import { TAG_KEYS, cost, dayName, hasPrice, money, num, pick } from '../logic';
-import { RECIPE_DESC } from '../strings2';
 import { color } from '../theme';
 import { Button, Card, Field, Header, Icon, Pill, Row, RoundButton, Screen, T, Tag } from '../components/ui';
 import PhotoSlider from '../components/PhotoSlider';
 
 const PICTURE = 130;
 const likeKey = r => `recipe:${r.id}`; // feed posts share state.liked
-const describe = (r, lang) => pick(r.desc || RECIPE_DESC[r.id], lang);
+const describe = (r, lang) => pick(r.desc, lang);
 
 function Plate({ height, colors = [color.plate, color.plateDot] }) {
   return (

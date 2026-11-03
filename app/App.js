@@ -33,14 +33,12 @@ function Root() {
   const [stack, setStack] = useState([]); // screens opened on top of a view
   const [menu, setMenu] = useState(false);
   const [weekView, setWeekView] = useState(initialWeekView);
-  const [feedOf, setFeedOf] = useState(null);
 
   const nav = useMemo(() => ({
     go: v => { setStack([]); setView(v); setMenu(false); },
     open: (screen, params = {}) => setStack(s => [...s, { screen, params }]),
     back: () => setStack(s => s.slice(0, -1)),
     openMenu: () => setMenu(true),
-    showFeedOf: id => { setFeedOf(id); setStack([]); setView('feed'); },
     showWeek: week => { setWeekView(v => ({ ...v, week, picking: false })); setStack([]); setView('week'); },
   }), []);
 
@@ -60,10 +58,10 @@ function Root() {
   else if (top?.screen === 'prep') body = <Prep back={nav.back} />;
   else if (view === 'home') body = <Home />;
   else if (view === 'week') body = <Week open={nav.open} view={weekView} setView={setWeekView} />;
-  else if (view === 'feed') body = <Feed only={feedOf} />;
+  else if (view === 'feed') body = <Feed />;
   else if (view === 'shop') body = <Shop />;
   else if (view === 'recipes') body = <Recipes open={nav.open} />;
-  else if (view === 'community') body = <Community goWeek={() => nav.go('week')} />;
+  else if (view === 'community') body = <Community />;
   else body = <Settings />;
 
   const signedInApp = user && state.onboarded && !recovery;
@@ -74,7 +72,7 @@ function Root() {
       <View key={dark ? 'dark' : 'light'} style={{ flex: 1, backgroundColor: color.bg, direction: rtl ? 'rtl' : 'ltr' }}>
         <StatusBar style={dark ? 'light' : 'dark'} />
         <View style={{ flex: 1 }}>{body}</View>
-        {signedInApp && !top ? <TabBar tab={MAIN_TABS.includes(view) ? view : null} onTab={k => { if (k === 'feed') setFeedOf(null); nav.go(k); }} /> : null}
+        {signedInApp && !top ? <TabBar tab={MAIN_TABS.includes(view) ? view : null} onTab={nav.go} /> : null}
         {signedInApp ? <Menu visible={menu} onClose={() => setMenu(false)} current={top ? null : view} go={nav.go} openScreen={nav.open} /> : null}
       </View>
     </NavCtx.Provider>

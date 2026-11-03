@@ -2,7 +2,7 @@
 // Your own recipes and weekly plans are also saved to Supabase, so followers can see them.
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { R, COOKS, makeT, isRtl, planWeek, swapDay as swap, weekKey } from './logic';
+import { makeT, isRtl, planWeek, swapDay as swap, weekKey } from './logic';
 import * as Linking from 'expo-linking';
 import { currentUser, handleAuthLink, isDemo, isRecoveryLink, onAuthChange, signOut } from './auth';
 import { deleteCloudRecipe, pushRecipe, pushWeek, syncProfileName, updateCloudRecipe } from './social';
@@ -18,11 +18,9 @@ const DEFAULT = {
   weeks: {}, // every saved week, by weekKey
   checked: {},
   custom: [],
-  following: ['noa', 'amit'],
   liked: {},
   saved: {},
   recipeComments: {},
-  homeShows: { stories: true },
   theme: 'auto', // auto follows the phone; or light, dark
 };
 
@@ -33,10 +31,15 @@ const keyFor = id => (id ? `${KEY}:${id}` : KEY);
 const withPlan = (s, plan, key = weekKey()) => ({ ...s, weeks: { ...s.weeks, [key]: plan }, plan: key === weekKey() ? plan : s.plan });
 
 // Starts each new week empty, and keeps a plan saved before weeks existed.
+// Days that name a recipe you no longer have (such as the removed sample recipes) are emptied.
 function loadSaved(saved) {
   const key = weekKey();
-  const weeks = saved.weeks || (saved.plan?.length ? { [key]: saved.plan } : {});
-  return { ...DEFAULT, ...saved, weeks, plan: weeks[key] || [], homeShows: { ...DEFAULT.homeShows, ...(saved.homeShows || {}) } };
+  const custom = saved.custom || [];
+  const have = id => custom.some(r => r.id === id);
+  const raw = saved.weeks || (saved.plan?.length ? { [key]: saved.plan } : {});
+  const weeks = Object.fromEntries(Object.entries(raw).map(([k, p]) => [k, p.map(id => (id && have(id) ? id : null))]));
+  const { following, homeShows, ...rest } = saved; // sample cooks and their stories, now removed
+  return { ...DEFAULT, ...rest, weeks, plan: weeks[key] || [] };
 }
 
 // Adds a copy of someone's recipe to `custom`, unless it is already there.
@@ -157,15 +160,15 @@ export function StoreProvider({ children }) {
     return () => clearTimeout(timer);
   }, [state.weeks, state.custom, userId]);
 
-  const recipes = useMemo(() => R.concat(state.custom), [state.custom]);
+  const recipes = state.custom;
   const byId = useCallback(id => recipes.find(r => r.id === id), [recipes]);
   const t = useMemo(() => makeT(state.lang), [state.lang]);
 
   const actions = useMemo(() => ({
     set: patch => setState(s => ({ ...s, ...(typeof patch === 'function' ? patch(s) : patch) })),
     toggleMode: k => setState(s => ({ ...s, modes: { ...s.modes, [k]: !s.modes[k] } })),
-    buildWeek: key => setState(s => withPlan({ ...s, onboarded: true, checked: {} }, planWeek(R.concat(s.custom), s.modes), key)),
-    swapDay: d => setState(s => withPlan(s, swap(s.plan, d, R.concat(s.custom), s.modes))),
+    buildWeek: key => setState(s => withPlan({ ...s, onboarded: true, checked: {} }, planWeek(s.custom, s.modes), key)),
+    swapDay: d => setState(s => withPlan(s, swap(s.plan, d, s.custom, s.modes))),
     setDay: (d, id, key = weekKey()) => setState(s => { const plan = (s.weeks[key] || []).slice(); plan[d] = id; return withPlan(s, plan, key); }),
     toggleItem: key => setState(s => ({ ...s, checked: { ...s.checked, [key]: !s.checked[key] } })),
     clearChecks: () => setState(s => ({ ...s, checked: {} })),
@@ -194,18 +197,9 @@ export function StoreProvider({ children }) {
       });
       return withPlan({ ...s, custom, checked: key === weekKey() ? {} : s.checked }, next, key);
     }),
-    toggleFollow: id => setState(s => ({ ...s, following: s.following.includes(id) ? s.following.filter(x => x !== id) : [...s.following, id] })),
-    // Copies a cook's week into a week of ours. In this week, only today and later change.
-    copyPlan: (cookId, key = weekKey()) => setState(s => {
-      const from = key === weekKey() ? new Date().getDay() : 0;
-      const plan = (s.weeks[key] || []).slice();
-      COOKS.find(c => c.id === cookId).plan.forEach((id, d) => { if (d >= from) plan[d] = id; });
-      return withPlan({ ...s, checked: key === weekKey() ? {} : s.checked }, plan, key);
-    }),
     toggleLike: id => setState(s => ({ ...s, liked: { ...s.liked, [id]: !s.liked[id] } })),
     addComment: (id, comment) => setState(s => ({ ...s, recipeComments: { ...s.recipeComments, [id]: [...(s.recipeComments[id] || []), comment] } })),
     toggleSave: id => setState(s => ({ ...s, saved: { ...s.saved, [id]: !s.saved[id] } })),
-    toggleHome: k => setState(s => ({ ...s, homeShows: { ...s.homeShows, [k]: !s.homeShows[k] } })),
     signedIn: u => setUser(u),
     logout: async () => { try { await signOut(); } finally { setUser(null); } },
   }), []);

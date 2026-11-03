@@ -9,10 +9,9 @@ import { color } from '../theme';
 import { Avatar, Card, Field, Header, Pill, Row, Screen, Stepper, T } from '../components/ui';
 import { LanguageSwitch } from './Onboarding';
 
-const SECTIONS = ['stories'];
 
 export default function Settings() {
-  const { state, user, t, set, toggleMode, toggleHome, logout } = useStore();
+  const { state, user, t, set, toggleMode, logout } = useStore();
   const [confirmOut, setConfirmOut] = useState(false);
   const [priv, setPriv] = useState(null); // null until loaded
   useEffect(() => { getPrivate(user?.id).then(setPriv).catch(() => {}); }, [user?.id]);
@@ -70,17 +69,6 @@ export default function Settings() {
         </Row>
         <Field label={t('budgetLabel')} keyboardType="number-pad" value={String(state.budget)}
           onChangeText={v => set({ budget: Math.max(0, Number(v.replace(/\D/g, '')) || 0) })} />
-      </Card>
-
-      <Card style={{ gap: 4 }}>
-        <T v="label" c="muted">{t('homeShows')}</T>
-        {SECTIONS.map(k => (
-          <Row key={k} style={{ justifyContent: 'space-between', paddingVertical: 6 }}>
-            <T>{t('show_' + k)}</T>
-            <Switch value={!!state.homeShows[k]} onValueChange={() => toggleHome(k)} accessibilityLabel={t('show_' + k)}
-              trackColor={{ true: color.accent, false: color.line }} thumbColor={color.surface} ios_backgroundColor={color.line} />
-          </Row>
-        ))}
       </Card>
 
       <Pressable accessibilityRole="button" onPress={() => (confirmOut ? logout() : setConfirmOut(true))}>

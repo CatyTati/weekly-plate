@@ -3,7 +3,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useStore } from '../store';
-import { feedFor, firstName } from '../logic';
+import { firstName } from '../logic';
 import { LanguageSwitch } from './Onboarding';
 import { isDemo } from '../auth';
 import { myConnections } from '../social';
@@ -44,7 +44,6 @@ export default function Menu({ visible, onClose, current, go, openScreen }) {
   if (!mounted) return null;
   const hidden = rtl ? w : -w; // the drawer comes in from the start side
   const translateX = x.interpolate({ inputRange: [0, 1], outputRange: [hidden, 0] });
-  const fresh = feedFor(state.following).filter(p => p.hours < 24).length;
   const nav = view => () => { onClose(); go(view); };
   const name = user?.name || firstName(user);
 
@@ -71,8 +70,7 @@ export default function Menu({ visible, onClose, current, go, openScreen }) {
             </Row>
             <Item icon="home" label={t('home')} active={current === 'home'} onPress={nav('home')} />
             <Item icon="week" label={t('tab_week')} active={current === 'week'} onPress={nav('week')} />
-            <Item icon="feed" label={t('feed')} active={current === 'feed'} onPress={nav('feed')}
-              extra={fresh ? <View style={st.badge}><T v="label" c="kids">{t('newPosts', { n: fresh })}</T></View> : null} />
+            <Item icon="feed" label={t('feed')} active={current === 'feed'} onPress={nav('feed')} />
             <Item icon="shop" label={t('tab_shop')} active={current === 'shop'} onPress={nav('shop')} />
             <View style={{ height: 1, backgroundColor: color.line, marginVertical: 10 }} />
             <Item icon="users" label={t('people_title')} onPress={() => { onClose(); openScreen('people', { tab: counts?.requests ? 'requests' : 'followers' }); }}

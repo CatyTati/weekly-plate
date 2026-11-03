@@ -3,9 +3,7 @@ import { Share, View } from 'react-native';
 import { useStore } from '../store';
 import { useNav } from '../nav';
 import { cost, fmtQty, hasPrice, ingName, money, pick } from '../logic';
-import { RECIPE_STEPS } from '../steps';
 import AddToWeekSheet from './AddToWeek';
-import { RECIPE_DESC } from '../strings2';
 import { color } from '../theme';
 import { Button, Card, Pill, Row, RoundButton, Screen, T, Tag } from '../components/ui';
 import PhotoSlider from '../components/PhotoSlider';
@@ -30,8 +28,8 @@ export default function RecipeDetail({ id, recipe, canCopy, back }) {
   const [picking, setPicking] = useState(false);
   const [confirmDel, setConfirmDel] = useState(false);
   if (!r) return null;
-  const steps = r.steps ? r.steps.split('\n').map(x => x.trim()).filter(Boolean) : RECIPE_STEPS[r.id]?.[lang] || [];
-  const desc = pick(r.desc || RECIPE_DESC[r.id], lang);
+  const steps = (r.steps || '').split('\n').map(x => x.trim()).filter(Boolean);
+  const desc = pick(r.desc, lang);
   const serves = r.serves || 4; // amounts are kept for 4 people
   const text = `${pick(r.name, lang)}\n` + r.ing.map(([n, q, u]) => `• ${ingName(n, lang)} – ${fmtQty(q * serves / 4, u, lang)}`).join('\n') + (steps.length ? '\n\n' + steps.join('\n') : '');
 
