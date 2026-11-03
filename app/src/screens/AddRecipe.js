@@ -3,8 +3,8 @@ import { Image, Pressable, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useStore } from '../store';
 import { LIMITS, TAG_KEYS, U, UNITS, unitName, validateRecipe } from '../logic';
-import { color } from '../theme';
-import { Button, Field, Icon, Pill, Row, RoundButton, Screen, Stepper, T } from '../components/ui';
+import { color, font } from '../theme';
+import { Button, Card, Field, Icon, Pill, Row, RoundButton, Screen, Stepper, T } from '../components/ui';
 
 const blank = () => ({ n: '', q: '', u: U, a: 'veg' });
 const empty = () => ({ name: '', desc: '', time: '30', serves: 4, steps: '', kid: '', tags: {}, ing: [blank(), blank(), blank()], photos: [] });
@@ -19,6 +19,38 @@ const toForm = r => {
     ing: r.ing.map(([n, q, u, a]) => ({ n, q: round(q * serves / 4), u, a: a || 'veg' })),
   };
 };
+
+/** A titled card that groups part of the form. */
+function Section({ icon, title, children }) {
+  return (
+    <Card style={{ gap: 14 }}>
+      <Row gap={10}>
+        <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: color.accentSoft, alignItems: 'center', justifyContent: 'center' }}>
+          <Icon name={icon} c="accent" size={17} />
+        </View>
+        <T v="heading" style={{ flex: 1 }}>{title}</T>
+      </Row>
+      {children}
+    </Card>
+  );
+}
+
+/** The unit of one ingredient, as one row of equal segments. */
+function Units({ value, lang, onChange }) {
+  return (
+    <Row gap={0} style={{ backgroundColor: color.surface, borderRadius: 12, padding: 3, borderWidth: 1, borderColor: color.line }}>
+      {UNITS.slice(0, 7).map(u => {
+        const on = u === value;
+        return (
+          <Pressable key={u} onPress={() => onChange(u)} accessibilityRole="button" accessibilityState={{ selected: on }}
+            style={{ flex: 1, paddingVertical: 7, borderRadius: 9, backgroundColor: on ? color.accent : 'transparent' }}>
+            <T v="label" c={on ? 'onAccent' : 'muted'} center style={{ fontFamily: font.medium }}>{unitName(u, lang)}</T>
+          </Pressable>
+        );
+      })}
+    </Row>
+  );
+}
 
 /** A new recipe, or with `id`, changes to one of yours. */
 export default function AddRecipe({ id, back }) {
@@ -81,9 +113,9 @@ export default function AddRecipe({ id, back }) {
   return (
     <Screen scrollRef={scroll} footer={<Button label={t('saveBtn')} onPress={save} />}>
       <Row style={{ justifyContent: 'space-between' }}>
-        <RoundButton icon="back" flip label={t('back')} onPress={back} />
+        <View style={{ width: 40 }} />
         <T v="heading" center style={{ flex: 1 }}>{t(editing ? 'editRecipe' : 'newRecipe')}</T>
-        <Pressable onPress={back} hitSlop={8}><T v="bodyStrong" c="muted">{t('cancel')}</T></Pressable>
+        <RoundButton icon="close" label={t('cancel')} onPress={back} />
       </Row>
 
       {tried && count ? (
@@ -93,12 +125,11 @@ export default function AddRecipe({ id, back }) {
         </Row>
       ) : null}
 
-      <View style={{ gap: 8 }}>
-        <T v="label" c="muted">{t('fPhotos', { m: LIMITS.photos })}</T>
+      <Section icon="camera" title={t('fPhotos', { m: LIMITS.photos })}>
         <Row gap={10}>
           {form.photos.map((uri, i) => (
-            <View key={uri} style={{ width: 96, height: 80 }}>
-              <Image source={{ uri }} style={{ width: 96, height: 80, borderRadius: 18 }} />
+            <View key={uri} style={{ width: 92, height: 92 }}>
+              <Image source={{ uri }} style={{ width: 92, height: 92, borderRadius: 18 }} />
               {i === 0 ? <View style={{ position: 'absolute', bottom: 6, start: 6, backgroundColor: color.accent, borderRadius: 99, paddingHorizontal: 8, paddingVertical: 1 }}><T v="label" c="onAccent">{t('mainPhoto')}</T></View> : null}
               <View style={{ position: 'absolute', top: 4, end: 4 }}>
                 <RoundButton icon="close" size={26} bg="ink" c="surface" label={t('rmPhoto', { i: i + 1 })} onPress={() => update({ photos: form.photos.filter((_, j) => j !== i) })} />
@@ -107,59 +138,73 @@ export default function AddRecipe({ id, back }) {
           ))}
           {form.photos.length < LIMITS.photos ? (
             <Pressable onPress={pickPhotos} accessibilityRole="button" accessibilityLabel={t('addPhoto')}
-              style={{ width: 96, height: 80, borderRadius: 18, borderWidth: 1.5, borderStyle: 'dashed', borderColor: color.line, backgroundColor: color.surface, alignItems: 'center', justifyContent: 'center', gap: 2 }}>
+              style={{ width: 92, height: 92, borderRadius: 18, borderWidth: 1.5, borderStyle: 'dashed', borderColor: color.accent, backgroundColor: color.accentSoft, alignItems: 'center', justifyContent: 'center', gap: 4 }}>
               <Icon name="camera" c="accent" />
               <T v="label" c="accent" center>{t('left', { b: LIMITS.photos - form.photos.length })}</T>
             </Pressable>
           ) : null}
         </Row>
         {photoError ? <T v="caption" c="error">{photoError}</T> : null}
-      </View>
+      </Section>
 
-      <Field label={t('fName')} value={form.name} maxLength={LIMITS.nameMax} error={errors.name} onChangeText={v => update({ name: v }, 'name')} />
-      <Field label={t('fTime')} value={form.time} keyboardType="number-pad" error={errors.time} onChangeText={v => update({ time: v.replace(/\D/g, '') }, 'time')} />
+      <Section icon="book" title={t('secDetails')}>
+        <Field label={t('fName')} value={form.name} maxLength={LIMITS.nameMax} error={errors.name} onChangeText={v => update({ name: v }, 'name')} />
+        <Field label={t('fTime')} value={form.time} keyboardType="number-pad" error={errors.time} onChangeText={v => update({ time: v.replace(/\D/g, '') }, 'time')} />
+        <View style={{ gap: 8 }}>
+          <T v="label" c="muted">{t('fTags')}</T>
+          <Row gap={6} style={{ flexWrap: 'wrap' }}>
+            {TAG_KEYS.map(k => <Pill key={k} label={t('tag_' + k)} active={!!form.tags[k]} onPress={() => update({ tags: { ...form.tags, [k]: !form.tags[k] } })} />)}
+          </Row>
+        </View>
+        {form.tags.kids ? <Field label={t('fKid')} placeholder={t('fKidPh')} value={form.kid} maxLength={100} onChangeText={v => update({ kid: v })} /> : null}
+        <Field label={t('fDesc')} placeholder={t('descPh')} value={form.desc} multiline maxLength={160}
+          inputStyle={{ minHeight: 70, textAlignVertical: 'top' }} onChangeText={v => update({ desc: v })} />
+      </Section>
 
-      <View style={{ gap: 8 }}>
-        <T v="label" c="muted">{t('fTags')}</T>
-        <Row gap={6} style={{ flexWrap: 'wrap' }}>
-          {TAG_KEYS.map(k => <Pill key={k} label={t('tag_' + k)} active={!!form.tags[k]} onPress={() => update({ tags: { ...form.tags, [k]: !form.tags[k] } })} />)}
-        </Row>
-      </View>
-      {form.tags.kids ? <Field label={t('fKid')} placeholder={t('fKidPh')} value={form.kid} maxLength={100} onChangeText={v => update({ kid: v })} /> : null}
-
-      <View style={{ gap: 8 }}>
-        <Row style={{ justifyContent: 'space-between' }}>
-          <T v="label" c="muted">{t('fServes')}</T>
+      <Section icon="shop" title={t('secIng')}>
+        <Row style={{ justifyContent: 'space-between', backgroundColor: color.bg, borderRadius: 16, paddingVertical: 8, paddingHorizontal: 12 }}>
+          <Row gap={8} style={{ flex: 1 }}>
+            <Icon name="users" c="muted" size={18} />
+            <T v="caption" c="muted" style={{ flex: 1 }}>{t('fServes')}</T>
+          </Row>
           <Stepper value={form.serves} onChange={v => update({ serves: v })} />
         </Row>
-        <T v="label" c="muted">{t('fIng', { n: form.serves })}</T>
+        <T v="caption" c="muted">{t('ingAmounts', { n: form.serves })}</T>
+
         {form.ing.map((r, i) => {
           const bad = !!errors['ing.' + i];
           return (
-            <View key={i} style={{ gap: 6, padding: 10, borderRadius: 16, backgroundColor: bad ? color.errorSoft : color.surface, borderWidth: bad ? 1.5 : 1, borderColor: bad ? color.error : color.line }}>
+            <View key={i} style={{ gap: 10, padding: 12, borderRadius: 18, backgroundColor: bad ? color.errorSoft : color.bg, borderWidth: bad ? 1.5 : 0, borderColor: color.error }}>
               <Row gap={8}>
+                <View style={{ width: 26, height: 26, borderRadius: 13, backgroundColor: color.accentSoft, alignItems: 'center', justifyContent: 'center' }}>
+                  <T v="label" c="accent" center style={{ fontFamily: font.medium }}>{i + 1}</T>
+                </View>
                 <Field style={{ flex: 1 }} placeholder={t('ingPh')} value={r.n} maxLength={40} onChangeText={v => setRow(i, { n: v })} accessibilityLabel={t('ingNameAria', { i: i + 1 })} />
-                <Field style={{ width: 76 }} placeholder={t('colQty')} value={r.q} keyboardType="decimal-pad" onChangeText={v => setRow(i, { q: v.replace(',', '.') })} accessibilityLabel={t('qtyAria', { i: i + 1 })} />
-                <RoundButton icon="minus" size={32} bg="bg" c="muted" label={t('rmIng', { i: i + 1 })}
-                  onPress={() => form.ing.length > 1 && update({ ing: form.ing.filter((_, j) => j !== i) })} />
+                <Field style={{ width: 70 }} inputStyle={{ textAlign: 'center', paddingHorizontal: 6 }} placeholder={t('colQty')} value={r.q} keyboardType="decimal-pad"
+                  onChangeText={v => setRow(i, { q: v.replace(',', '.') })} accessibilityLabel={t('qtyAria', { i: i + 1 })} />
+                {form.ing.length > 1 ? (
+                  <RoundButton icon="trash" size={34} bg="errorSoft" c="error" label={t('rmIng', { i: i + 1 })}
+                    onPress={() => update({ ing: form.ing.filter((_, j) => j !== i) }, 'ing.' + i)} />
+                ) : null}
               </Row>
-              <Row gap={6} style={{ flexWrap: 'wrap' }}>
-                {UNITS.slice(0, 7).map(u => <Pill key={u} label={unitName(u, lang)} active={r.u === u} onPress={() => setRow(i, { u })} />)}
-              </Row>
+              <Units value={r.u} lang={lang} onChange={u => setRow(i, { u })} />
             </View>
           );
         })}
         {ingError ? <T v="caption" c="error">{ingError}</T> : null}
-        <Pressable onPress={() => form.ing.length < LIMITS.ingMax && update({ ing: [...form.ing, blank()] }, 'ing')} hitSlop={8}>
-          <Row gap={6}><Icon name="plus" c="accent" size={18} /><T v="bodyStrong" c="accent">{t('addIng')}</T></Row>
-        </Pressable>
-      </View>
+        {form.ing.length < LIMITS.ingMax ? (
+          <Pressable onPress={() => update({ ing: [...form.ing, blank()] }, 'ing')} accessibilityRole="button"
+            style={({ pressed }) => ({ flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center', paddingVertical: 13, borderRadius: 18, borderWidth: 1.5, borderStyle: 'dashed', borderColor: color.accent, backgroundColor: pressed ? color.accentSoft : 'transparent' })}>
+            <Icon name="plus" c="accent" size={18} />
+            <T v="bodyStrong" c="accent">{t('addIng')}</T>
+          </Pressable>
+        ) : null}
+      </Section>
 
-      <Field label={t('fDesc')} placeholder={t('descPh')} value={form.desc} multiline maxLength={160}
-        inputStyle={{ minHeight: 70, textAlignVertical: 'top' }} onChangeText={v => update({ desc: v })} />
-
-      <Field label={t('fSteps')} placeholder={t('stepsPh')} value={form.steps} multiline maxLength={3000} error={errors.steps}
-        inputStyle={{ minHeight: 110, textAlignVertical: 'top' }} onChangeText={v => update({ steps: v }, 'steps')} />
+      <Section icon="pot" title={t('secPrep')}>
+        <Field label={t('fSteps')} placeholder={t('stepsPh')} value={form.steps} multiline maxLength={3000} error={errors.steps}
+          inputStyle={{ minHeight: 130, textAlignVertical: 'top' }} onChangeText={v => update({ steps: v }, 'steps')} />
+      </Section>
     </Screen>
   );
 }
