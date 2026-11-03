@@ -233,7 +233,9 @@ export function TabBar({ tab, onTab }) {
           const on = k === tab;
           return (
             <Pressable key={k} accessibilityRole="tab" accessibilityState={{ selected: on }} onPress={() => onTab(k)} style={s.tab}>
-              <Icon name={k} c={on ? 'accent' : 'muted'} size={24} w={on ? 2.2 : 1.8} />
+              <View style={{ paddingHorizontal: 18, paddingVertical: 4, borderRadius: radius.pill, backgroundColor: on ? color.accentSoft : 'transparent' }}>
+                <Icon name={k} c={on ? 'accent' : 'muted'} size={22} w={on ? 2.2 : 1.8} />
+              </View>
               <T v="label" c={on ? 'accent' : 'muted'} center style={on ? { fontFamily: font.medium } : null}>{t(label)}</T>
             </Pressable>
           );
@@ -264,16 +266,16 @@ const makeStyles = () => StyleSheet.create({
   header: { paddingHorizontal: 22, paddingTop: 8 },
   footer: { paddingHorizontal: 22, paddingBottom: 12, paddingTop: 8 },
   row: { flexDirection: 'row', alignItems: 'center' },
-  card: { backgroundColor: color.surface, borderRadius: radius.card, padding: 16, gap: 10, ...shadow },
+  card: { backgroundColor: color.surface, borderRadius: radius.card, padding: 16, gap: 10, borderWidth: 1, borderColor: color.edge, ...shadow },
   btn: { flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center', borderRadius: radius.pill, paddingVertical: 15, paddingHorizontal: 22 },
   pill: { borderRadius: radius.pill, borderWidth: 1, borderColor: color.line, backgroundColor: color.surface, paddingVertical: 7, paddingHorizontal: 14 },
   tag: { borderRadius: radius.pill, paddingVertical: 3, paddingHorizontal: 10 },
   stepper: { gap: 4, padding: 4, borderRadius: radius.pill, backgroundColor: color.surface, borderWidth: 1, borderColor: color.line },
   check: { width: 24, height: 24, borderRadius: 8, borderWidth: 1.5, borderColor: color.line, backgroundColor: color.surface, alignItems: 'center', justifyContent: 'center' },
   // No lineHeight: on iOS it pushes a single-line input's text down and cuts it off.
-  input: { fontFamily: type.body.fontFamily, fontSize: type.body.fontSize, color: color.ink, backgroundColor: color.surface, borderWidth: 1, borderColor: color.line, borderRadius: radius.md, paddingHorizontal: 14, paddingVertical: 12 },
+  input: { fontFamily: type.body.fontFamily, fontSize: type.body.fontSize, color: color.ink, backgroundColor: color.field, borderWidth: 1, borderColor: color.line, borderRadius: radius.md, paddingHorizontal: 14, paddingVertical: 12 },
   inputError: { borderColor: color.error, borderWidth: 1.5, backgroundColor: color.errorSoft },
-  tabbar: { backgroundColor: color.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 8, ...shadow, shadowOffset: { width: 0, height: -4 } },
+  tabbar: { backgroundColor: color.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 8, borderWidth: 1, borderBottomWidth: 0, borderColor: color.edge, ...shadow, shadowOffset: { width: 0, height: -4 } },
   tab: { flex: 1, alignItems: 'center', gap: 3, paddingVertical: 4 },
 });
 onThemeChange(() => { s = makeStyles(); });

@@ -5,20 +5,11 @@ import { TAG_KEYS, cost, dayName, hasPrice, money, num, pick } from '../logic';
 import { color } from '../theme';
 import { Button, Card, Field, Header, Icon, Pill, Row, RoundButton, Screen, T, Tag } from '../components/ui';
 import PhotoSlider from '../components/PhotoSlider';
+import FoodArt from '../components/FoodArt';
 
 const PICTURE = 130;
 const likeKey = r => `recipe:${r.id}`; // feed posts share state.liked
 const describe = (r, lang) => pick(r.desc, lang);
-
-function Plate({ height, colors = [color.plate, color.plateDot] }) {
-  return (
-    <View style={{ height, borderRadius: 18, backgroundColor: colors[0], alignItems: 'center', justifyContent: 'center' }}>
-      <View style={{ width: height * 0.7, height: height * 0.7, borderRadius: height, backgroundColor: color.surface, alignItems: 'center', justifyContent: 'center' }}>
-        <View style={{ width: height * 0.5, height: height * 0.5, borderRadius: height, backgroundColor: colors[1] }} />
-      </View>
-    </View>
-  );
-}
 
 /** Add button, search, filters and the recipe cards. Used by Home and the Recipes screen. */
 export function RecipeList({ open, onPick }) {
@@ -39,7 +30,7 @@ export function RecipeList({ open, onPick }) {
       {list.map(r => (
         <Pressable key={r.id} onPress={() => (onPick ? onPick(r.id) : open('recipe', { id: r.id }))}>
           <Card style={{ gap: 12, paddingTop: 12 }}>
-            <PhotoSlider photos={r.photos} height={PICTURE} radius={18} empty={<Plate height={PICTURE} />} />
+            <PhotoSlider photos={r.photos} height={PICTURE} radius={18} empty={<FoodArt height={PICTURE} radius={18} />} />
             <Row gap={16}>
               <Pressable onPress={() => toggleLike(likeKey(r))} hitSlop={8} accessibilityRole="button" accessibilityState={{ selected: !!state.liked[likeKey(r)] }} accessibilityLabel={t('like')}>
                 <Row gap={6}>
@@ -54,8 +45,11 @@ export function RecipeList({ open, onPick }) {
                 </Row>
               </Pressable>
             </Row>
-            <T v="title" numberOfLines={2}>{pick(r.name, lang)}{r.custom ? `  · ${t('mine')}` : ''}</T>
-            <T v="caption" c="muted">{r.time} {t('min')} · {hasPrice(r) ? t('perServing', { c: money(cost(r, state.servings) / state.servings, lang) }) : t('unknownCost')}</T>
+            <T v="title" numberOfLines={2}>{pick(r.name, lang)}</T>
+            <Row gap={6}>
+              <Icon name="clock" c="muted" size={16} />
+              <T v="caption" c="muted">{r.time} {t('min')}{hasPrice(r) ? ` · ${t('perServing', { c: money(cost(r, state.servings) / state.servings, lang) })}` : ''}</T>
+            </Row>
             {describe(r, lang) ? <T c="muted" numberOfLines={2}>{describe(r, lang)}</T> : null}
             <Row gap={6} style={{ flexWrap: 'wrap' }}>{r.tags.map(k => <Tag key={k} k={k} />)}</Row>
           </Card>

@@ -20,6 +20,8 @@ const light = {
   glowGreen: '#DCEDE1',
   plate: '#F6E3DA',
   plateDot: '#E59A86',
+  field: '#FFFFFF', // text inputs
+  edge: '#F1ECEE', // thin outline on cards and the tab bar
 };
 
 // The same roles for dark mode: soft backgrounds go dark, text and accents go light.
@@ -44,6 +46,8 @@ const dark = {
   glowGreen: '#1A2B21',
   plate: '#3A2A27',
   plateDot: '#B9705E',
+  field: '#18151B',
+  edge: '#302A34',
 };
 
 // Screens read `color` while they render, so switching the palette and

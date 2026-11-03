@@ -7,6 +7,7 @@ import { isDemo, signInWithEmail, signInWithProvider, signUpWithEmail, sendPassw
 import { PASS_MIN, validateEmail, validateSignIn, validateSignUp } from '../logic';
 import { color, radius, shadow } from '../theme';
 import { Button, Checkbox, Field, Header, Row, RoundButton, Screen, T } from '../components/ui';
+import FoodArt from '../components/FoodArt';
 import { LanguageSwitch } from './Onboarding';
 
 const APPLE_ENABLED = false; // turn on once Sign in with Apple is set up in Supabase
@@ -44,16 +45,6 @@ function Divider({ label }) {
       <T v="caption" c="muted" center>{label}</T>
       <View style={{ flex: 1, height: 1, backgroundColor: color.line }} />
     </Row>
-  );
-}
-
-function Logo() {
-  return (
-    <View style={{ width: 88, height: 88, borderRadius: 28, backgroundColor: color.accentSoft, alignItems: 'center', justifyContent: 'center', alignSelf: 'center' }}>
-      <View style={{ width: 60, height: 60, borderRadius: 30, backgroundColor: color.surface, alignItems: 'center', justifyContent: 'center', ...shadow }}>
-        <View style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: '#8DBB9D' }} />
-      </View>
-    </View>
   );
 }
 
@@ -148,8 +139,8 @@ export default function Auth({ onSignedIn }) {
       <LanguageSwitch />
       {mode === 'signin' ? (
         <>
-          <View style={{ gap: 10, paddingTop: 16 }}>
-            <Logo />
+          <FoodArt height={200} />
+          <View style={{ gap: 6 }}>
             <T v="display" center>{t('app')}</T>
             <T c="muted" center>{t('tagline')}</T>
           </View>

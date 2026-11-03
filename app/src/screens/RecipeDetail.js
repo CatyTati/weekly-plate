@@ -7,16 +7,7 @@ import AddToWeekSheet from './AddToWeek';
 import { color } from '../theme';
 import { Button, Card, ConfirmDialog, Pill, Row, RoundButton, Screen, T, Tag } from '../components/ui';
 import PhotoSlider from '../components/PhotoSlider';
-
-function NoPhoto() {
-  return (
-    <View style={{ height: 220, borderRadius: 28, backgroundColor: color.plate, alignItems: 'center', justifyContent: 'center' }}>
-      <View style={{ width: 150, height: 150, borderRadius: 75, backgroundColor: color.surface, alignItems: 'center', justifyContent: 'center' }}>
-        <View style={{ width: 110, height: 110, borderRadius: 55, backgroundColor: color.plateDot }} />
-      </View>
-    </View>
-  );
-}
+import FoodArt from '../components/FoodArt';
 
 export default function RecipeDetail({ id, recipe, canCopy, back }) {
   const { state, t, byId, deleteRecipe, copyRecipe } = useStore();
@@ -59,7 +50,7 @@ export default function RecipeDetail({ id, recipe, canCopy, back }) {
         <ConfirmDialog danger title={t('delTitle')} message={t('delBody', { n: pick(r.name, lang) })} confirmLabel={t('del')}
           onCancel={() => setConfirmDel(false)} onConfirm={() => { setConfirmDel(false); deleteRecipe(r.id); back(); }} />
       ) : null}
-      <PhotoSlider photos={r.photos} height={220} radius={28} empty={<NoPhoto />} />
+      <PhotoSlider photos={r.photos} height={220} radius={28} empty={<FoodArt height={220} />} />
       <View style={{ gap: 8 }}>
         <T v="title">{pick(r.name, lang)}</T>
         {desc ? <T c="muted">{desc}</T> : null}
