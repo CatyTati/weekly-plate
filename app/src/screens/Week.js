@@ -11,7 +11,7 @@ function shiftMonth(month, by) {
 
 /** Month calendar. A row is a week, and tapping it chooses that week. */
 function WeekCalendar({ month, setMonth, selected, onPick }) {
-  const { state, t, rtl } = useStore();
+  const { state, t } = useStore();
   const lang = state.lang;
   const weeks = [];
   for (let d = thisSunday(month); d.getMonth() === month.getMonth() || d < month; d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 7)) weeks.push(d);
@@ -19,11 +19,12 @@ function WeekCalendar({ month, setMonth, selected, onPick }) {
   const title = new Intl.DateTimeFormat(localeOf(lang), { month: 'long', year: 'numeric' }).format(month);
   const arrow = (by, label) => (
     <Pressable onPress={() => setMonth(shiftMonth(month, by))} hitSlop={10} accessibilityRole="button" accessibilityLabel={label} style={{ paddingHorizontal: 10 }}>
-      <T v="heading" c="accent">{(by < 0) === rtl ? '›' : '‹'}</T>
+      <T v="heading" c="accent" style={{ writingDirection: 'ltr' }}>{by < 0 ? '‹' : '›'}</T>
     </Pressable>
   );
   return (
-    <Card style={{ gap: 6 }}>
+    // Left to right in every language: Sunday on the left, next month on the right.
+    <Card style={{ gap: 6, direction: 'ltr' }}>
       <Row style={{ justifyContent: 'space-between' }}>
         {arrow(-1, t('prevMonth'))}
         <T v="bodyStrong" center style={{ flex: 1 }}>{title}</T>
@@ -51,7 +52,7 @@ function WeekCalendar({ month, setMonth, selected, onPick }) {
 }
 
 /** What the Week page shows. Kept in App so it survives opening a recipe. */
-export const initialWeekView = () => ({ week: weekKey(), month: shiftMonth(new Date(), 0), picking: true });
+export const initialWeekView = () => ({ week: weekKey(), month: shiftMonth(new Date(), 0), picking: false });
 
 export default function Week({ open, view, setView }) {
   const { state, t, byId } = useStore();
