@@ -1,8 +1,9 @@
-// Settings: account, language, home preferences, what the home page shows, log out.
-import React, { useState } from 'react';
+// Settings: account, language, private account, home preferences, what the home page shows, log out.
+import React, { useEffect, useState } from 'react';
 import { Pressable, Switch, View } from 'react-native';
 import { useStore } from '../store';
 import { isDemo } from '../auth';
+import { getPrivate, setPrivate } from '../social';
 import { TAG_KEYS, firstName } from '../logic';
 import { color } from '../theme';
 import { Avatar, Card, Field, Header, Pill, Row, Screen, Stepper, T } from '../components/ui';
@@ -13,6 +14,8 @@ const SECTIONS = ['stories'];
 export default function Settings() {
   const { state, user, t, set, toggleMode, toggleHome, logout } = useStore();
   const [confirmOut, setConfirmOut] = useState(false);
+  const [priv, setPriv] = useState(null); // null until loaded
+  useEffect(() => { getPrivate(user?.id).then(setPriv).catch(() => {}); }, [user?.id]);
   const name = user?.name || firstName(user);
 
   return (
@@ -36,6 +39,17 @@ export default function Settings() {
         <T v="label" c="muted">{t('language')}</T>
         <LanguageSwitch />
       </Card>
+
+      {isDemo ? null : (
+        <Card style={{ gap: 6 }}>
+          <Row style={{ justifyContent: 'space-between' }}>
+            <T>{t('privateAccount')}</T>
+            <Switch value={!!priv} disabled={priv === null} onValueChange={v => { setPriv(v); setPrivate(user.id, v).catch(() => setPriv(!v)); }}
+              accessibilityLabel={t('privateAccount')} trackColor={{ true: color.accent, false: color.line }} thumbColor={color.surface} ios_backgroundColor={color.line} />
+          </Row>
+          <T v="caption" c="muted">{t('privateHint')}</T>
+        </Card>
+      )}
 
       <Card style={{ gap: 12 }}>
         <T v="label" c="muted">{t('household')}</T>

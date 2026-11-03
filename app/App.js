@@ -20,6 +20,7 @@ import AddRecipe from './src/screens/AddRecipe';
 import Community from './src/screens/Community';
 import Comments from './src/screens/Comments';
 import People from './src/screens/People';
+import Profile from './src/screens/Profile';
 import Settings from './src/screens/Settings';
 import Menu from './src/screens/Menu';
 
@@ -47,8 +48,9 @@ function Root() {
   if (recovery && user) body = <NewPassword />;
   else if (!user) body = <Auth onSignedIn={u => { signedIn(u); nav.go('home'); }} />;
   else if (!state.onboarded) body = <Onboarding />;
-  else if (top?.screen === 'recipe') body = <RecipeDetail id={top.params.id} back={nav.back} />;
+  else if (top?.screen === 'recipe') body = <RecipeDetail id={top.params.id} recipe={top.params.recipe} canCopy={top.params.canCopy} back={nav.back} />;
   else if (top?.screen === 'pick') body = <PickRecipe week={top.params.week} day={top.params.day} back={nav.back} />;
+  else if (top?.screen === 'profile') body = <Profile key={top.params.id} id={top.params.id} back={nav.back} />;
   else if (top?.screen === 'people') body = <People tab={top.params.tab} back={nav.back} />;
   else if (top?.screen === 'comments') body = <Comments id={top.params.id} back={nav.back} />;
   else if (top?.screen === 'add') body = <AddRecipe back={nav.back} />;

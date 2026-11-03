@@ -10,9 +10,12 @@ import { Avatar, Button, Card, Icon, MenuButton, Pill, Row, RoundButton, T, Tag,
 import { Stories } from './Home';
 import AddToWeekSheet, { SourceInfo } from './AddToWeek';
 
-/** Asks which week to copy a cook's week into, and says what will change. */
-function CopyWeekSheet({ cook, onClose }) {
-  const { state, t, rtl, byId, copyPlan } = useStore();
+/**
+ * Asks which week to copy someone's week into, and says what will change.
+ * For a real user, `theirs` holds their recipes, which are copied into yours.
+ */
+export function CopyWeekSheet({ cook, theirs, nameOf, onClose }) {
+  const { state, t, rtl, byId, copyPlan, copyWeekFrom } = useStore();
   const { showWeek } = useNav();
   const insets = useSafeAreaInsets();
   const lang = state.lang;
@@ -36,12 +39,12 @@ function CopyWeekSheet({ cook, onClose }) {
           <SourceInfo cook={cook} whole />
           <T c="muted">{t('copyExplain', { n: name })}</T>
           <Card style={{ gap: 6, paddingVertical: 12 }}>
-            {cook.plan.map((id, d) => (
+            {cook.plan.map((id, d) => (id ? (
               <Row key={d} gap={10}>
                 <T v="label" c="accent" style={{ minWidth: 64 }}>{dayName(d, lang)}</T>
-                <T v="caption" style={{ flex: 1 }} numberOfLines={1}>{pick(byId(id)?.name, lang)}</T>
+                <T v="caption" style={{ flex: 1 }} numberOfLines={1}>{nameOf ? nameOf(id) : pick(byId(id)?.name, lang)}</T>
               </Row>
-            ))}
+            ) : null))}
           </Card>
           <T v="bodyStrong">{t('copyWhich')}</T>
           <View style={{ gap: 8 }}>
@@ -64,7 +67,7 @@ function CopyWeekSheet({ cook, onClose }) {
               );
             })}
           </View>
-          <Button label={t('copyDo')} onPress={() => { copyPlan(cook.id, chosen); onClose(); showWeek(chosen); }} />
+          <Button label={t('copyDo')} onPress={() => { if (theirs) copyWeekFrom(cook.plan, theirs, chosen); else copyPlan(cook.id, chosen); onClose(); showWeek(chosen); }} />
           <Pressable onPress={onClose} hitSlop={8} style={{ alignSelf: 'center' }}><T v="bodyStrong" c="muted">{t('cancel')}</T></Pressable>
           </ScrollView>
         </View>

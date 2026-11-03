@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Image, ScrollView, Share, View, useWindowDimensions } from 'react-native';
 import { useStore } from '../store';
-import { cost, dayName, fmtQty, hasPrice, ingName, money, pick } from '../logic';
+import { cost, fmtQty, hasPrice, ingName, money, pick } from '../logic';
 import { RECIPE_STEPS } from '../steps';
 import AddToWeekSheet from './AddToWeek';
 import { RECIPE_DESC } from '../strings2';
@@ -20,10 +20,12 @@ function Photo({ uri }) {
     );
 }
 
-export default function RecipeDetail({ id, back }) {
-  const { state, t, byId, set, setDay, deleteRecipe } = useStore();
+export default function RecipeDetail({ id, recipe, canCopy, back }) {
+  const { state, t, byId, deleteRecipe, copyRecipe } = useStore();
   const { width } = useWindowDimensions();
-  const r = byId(id);
+  const r = recipe || byId(id); // `recipe` is someone else's, shown read-only
+  const theirs = !!recipe;
+  const copied = theirs && state.custom.some(x => x.copiedFrom === recipe.cloud);
   const lang = state.lang;
   const [picking, setPicking] = useState(false);
   const [confirmDel, setConfirmDel] = useState(false);
@@ -35,18 +37,22 @@ export default function RecipeDetail({ id, back }) {
   return (
     <Screen header={
       <Row style={{ justifyContent: 'space-between' }}>
-        {r.custom ? (
+        {r.custom && !theirs ? (
           <Pill label={confirmDel ? t('delConfirm') : t('del')} active={confirmDel} c="error" soft="errorSoft"
             onPress={() => { if (confirmDel) { deleteRecipe(r.id); back(); } else setConfirmDel(true); }} />
         ) : <View />}
         <RoundButton icon="close" label={t('close')} onPress={back} />
       </Row>
-    } footer={
+    } footer={theirs ? (
+      canCopy
+        ? <Button kind={copied ? 'secondary' : 'primary'} label={copied ? t('copiedRecipe') : t('copyRecipe')} onPress={() => { if (!copied) copyRecipe(recipe); }} />
+        : <T v="caption" c="muted" center>{t('copyNeedsApproval')}</T>
+    ) : (
       <Row gap={10}>
         <Button kind="secondary" label={t('share')} style={{ paddingHorizontal: 20 }} onPress={() => Share.share({ message: text }).catch(() => {})} />
         <Button label={t('addToWeek')} style={{ flex: 1 }} onPress={() => setPicking(true)} />
       </Row>
-    }>
+    )}>
       {picking ? <AddToWeekSheet id={r.id} onClose={() => setPicking(false)} /> : null}
       {r.photos?.length > 1 ? (
         <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -22 }}>

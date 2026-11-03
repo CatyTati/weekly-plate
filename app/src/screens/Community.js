@@ -16,7 +16,7 @@ export default function Community({ goWeek }) {
   const me = user?.id;
   const [query, setQuery] = useState('');
   const [people, setPeople] = useState(null);
-  const { error, setError, busy, followingIds, toggle } = useFollowing(me);
+  const { error, setError, busy, statusOf, toggle } = useFollowing(me);
   useEffect(() => {
     const timer = setTimeout(() => listPeople(me, query).then(setPeople).catch(() => setError(true)), 300);
     return () => clearTimeout(timer);
@@ -34,7 +34,7 @@ export default function Community({ goWeek }) {
         {error ? <T c="error">{t('eNetwork')}</T> : null}
         {people && !people.length ? <T c="muted">{q ? t('noPeople') : t('noAppPeople')}</T> : null}
         {(people || []).map(p => (
-          <PersonRow key={p.id} person={p} following={followingIds.has(p.id)} busy={busy === p.id} onToggle={() => toggle(p)} />
+          <PersonRow key={p.id} person={p} status={statusOf(p.id)} busy={busy === p.id} onToggle={() => toggle(p)} />
         ))}
       </>}
 

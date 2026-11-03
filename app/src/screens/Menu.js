@@ -31,7 +31,7 @@ export default function Menu({ visible, onClose, current, go, openScreen }) {
 
   useEffect(() => {
     if (!visible || isDemo) return;
-    myConnections(user?.id).then(c => setCounts({ followers: c.followers.length, following: c.following.length })).catch(() => {});
+    myConnections(user?.id).then(c => setCounts({ followers: c.followers.length, following: c.following.filter(p => p.status === 'approved').length, requests: c.requests.length })).catch(() => {});
   }, [visible, user?.id]);
   const [confirmOut, setConfirmOut] = useState(false);
 
@@ -75,7 +75,8 @@ export default function Menu({ visible, onClose, current, go, openScreen }) {
               extra={fresh ? <View style={st.badge}><T v="label" c="kids">{t('newPosts', { n: fresh })}</T></View> : null} />
             <Item icon="shop" label={t('tab_shop')} active={current === 'shop'} onPress={nav('shop')} />
             <View style={{ height: 1, backgroundColor: color.line, marginVertical: 10 }} />
-            <Item icon="users" label={t('people_title')} onPress={() => { onClose(); openScreen('people', { tab: 'followers' }); }} />
+            <Item icon="users" label={t('people_title')} onPress={() => { onClose(); openScreen('people', { tab: counts?.requests ? 'requests' : 'followers' }); }}
+              extra={counts?.requests ? <View style={st.badge}><T v="label" c="kids">{t('newRequests', { n: counts.requests })}</T></View> : null} />
             <Item icon="gear" label={t('settings')} active={current === 'settings'} onPress={nav('settings')} />
             <View style={st.item}>
               <Icon name="globe" c="muted" />
