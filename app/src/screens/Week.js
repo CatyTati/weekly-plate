@@ -54,7 +54,7 @@ function WeekCalendar({ month, setMonth, selected, onPick }) {
 export const initialWeekView = () => ({ week: weekKey(), month: shiftMonth(new Date(), 0), picking: true });
 
 export default function Week({ open, view, setView }) {
-  const { state, t, byId, buildWeek } = useStore();
+  const { state, t, byId } = useStore();
   const lang = state.lang;
   const now = weekKey();
   const { week, month, picking } = view;
@@ -71,8 +71,7 @@ export default function Week({ open, view, setView }) {
 
   return (
     <Screen>
-      <Header title={t('yourWeek')} sub={t('people', { n: state.servings })}
-        right={past ? null : <RoundButton icon="swap" bg="surface" c="accent" label={t('autoplan')} onPress={() => buildWeek(week)} />} />
+      <Header title={t('yourWeek')} sub={t('people', { n: state.servings })} />
 
       <Pressable onPress={() => update({ picking: !picking })} accessibilityRole="button" accessibilityState={{ expanded: picking }}>
         <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12 }}>
@@ -123,7 +122,7 @@ export default function Week({ open, view, setView }) {
                     {state.modes.kids && r.kid ? <T v="caption" c="kids">{t('forKids')} {pick(r.kid, lang)}</T> : null}
                   </> : <T c={past ? 'muted' : 'accent'}>{past ? t('noDinner') : t('chooseRecipe')}</T>}
                 </View>
-                {past ? null : <RoundButton icon={r ? 'swap' : 'plus'} bg="bg" c={r ? 'muted' : 'accent'} size={36} label={r ? t('changeRecipe') : t('chooseRecipe')} onPress={() => choose(d)} />}
+                {past || r ? null : <RoundButton icon="plus" bg="bg" c="accent" size={36} label={t('chooseRecipe')} onPress={() => choose(d)} />}
               </Card>
             </Pressable>
           ))}
