@@ -67,8 +67,6 @@ export default function Settings() {
           <T>{t('diners')}</T>
           <Stepper value={state.servings} onChange={v => set({ servings: v })} />
         </Row>
-        <Field label={t('budgetLabel')} keyboardType="number-pad" value={String(state.budget)}
-          onChangeText={v => set({ budget: Math.max(0, Number(v.replace(/\D/g, '')) || 0) })} />
       </Card>
 
       <Pressable accessibilityRole="button" onPress={() => (confirmOut ? logout() : setConfirmOut(true))}>

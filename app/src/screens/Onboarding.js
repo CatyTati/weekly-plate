@@ -87,10 +87,6 @@ export default function Onboarding({ onDone }) {
           <T v="label" c="muted">{t('diners')}</T>
           <Stepper value={state.servings} onChange={v => set({ servings: v })} />
         </Card>
-        <Card style={{ flex: 1, gap: 6 }}>
-          <Field label={t('budgetLabel')} keyboardType="number-pad" value={String(state.budget)}
-            onChangeText={v => set({ budget: Math.max(0, Number(v.replace(/\D/g, '')) || 0) })} />
-        </Card>
       </Row>
     </Screen>
   );

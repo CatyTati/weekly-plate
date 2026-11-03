@@ -63,9 +63,6 @@ export default function Week({ open, view, setView }) {
   const past = week < now;
   const plan = state.weeks[week] || [];
   const dishes = [0, 1, 2, 3, 4, 5, 6].map(d => byId(plan[d]));
-  const total = useMemo(() => dishes.filter(Boolean).reduce((s, r) => s + cost(r, state.servings), 0), [dishes, state.servings]);
-  const pct = state.budget ? Math.min(1, total / state.budget) : 0;
-  const over = state.budget > 0 && total > state.budget;
   const hasPrep = week === now && state.modes.prep && dishes.some(r => r?.tags.includes('prep'));
   const range = weekRangeLabel(keyToDate(week), lang);
   const choose = day => open('pick', { week, day });
@@ -89,22 +86,8 @@ export default function Week({ open, view, setView }) {
       {past ? (
         <Card>
           <T c="muted">{dishes.some(Boolean) ? t('pastWeek') : t('noHistory')}</T>
-          {dishes.some(Boolean) ? <T v="bodyStrong">{t('spent')}: {money(total, lang)}</T> : null}
         </Card>
-      ) : (
-        <Card>
-          <Row style={{ justifyContent: 'space-between' }}>
-            <T v="heading">{money(total, lang)}</T>
-            <T v="caption" c="muted">{t('of', { b: money(state.budget, lang) })}</T>
-          </Row>
-          <View style={{ height: 8, borderRadius: 4, backgroundColor: color.accentSoft, overflow: 'hidden' }}>
-            <View style={{ width: `${pct * 100}%`, height: 8, borderRadius: 4, backgroundColor: over ? color.error : color.accent }} />
-          </View>
-          <T v="caption" c={over ? 'error' : 'accent'}>
-            {over ? t('overBudget') : `${t('inBudget')} · ${t('left', { b: money(state.budget - total, lang) })}`}
-          </T>
-        </Card>
-      )}
+      ) : null}
 
       {hasPrep ? <Button kind="secondary" icon="pot" label={t('openPrep')} onPress={() => open('prep')} /> : null}
 
