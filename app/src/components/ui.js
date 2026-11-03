@@ -218,7 +218,8 @@ export const s = StyleSheet.create({
   tag: { borderRadius: radius.pill, paddingVertical: 3, paddingHorizontal: 10 },
   stepper: { gap: 4, padding: 4, borderRadius: radius.pill, backgroundColor: color.surface, borderWidth: 1, borderColor: color.line },
   check: { width: 24, height: 24, borderRadius: 8, borderWidth: 1.5, borderColor: color.line, backgroundColor: color.surface, alignItems: 'center', justifyContent: 'center' },
-  input: { ...type.body, color: color.ink, backgroundColor: color.surface, borderWidth: 1, borderColor: color.line, borderRadius: radius.md, paddingHorizontal: 14, paddingVertical: 12 },
+  // No lineHeight: on iOS it pushes a single-line input's text down and cuts it off.
+  input: { fontFamily: type.body.fontFamily, fontSize: type.body.fontSize, color: color.ink, backgroundColor: color.surface, borderWidth: 1, borderColor: color.line, borderRadius: radius.md, paddingHorizontal: 14, paddingVertical: 12 },
   inputError: { borderColor: color.error, borderWidth: 1.5, backgroundColor: color.errorSoft },
   tabbar: { backgroundColor: color.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 8, ...shadow, shadowOffset: { width: 0, height: -4 } },
   tab: { flex: 1, alignItems: 'center', gap: 3, paddingVertical: 4 },
