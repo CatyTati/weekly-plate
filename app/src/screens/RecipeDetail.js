@@ -32,7 +32,8 @@ export default function RecipeDetail({ id, recipe, canCopy, back }) {
   if (!r) return null;
   const steps = r.steps ? r.steps.split('\n').map(x => x.trim()).filter(Boolean) : RECIPE_STEPS[r.id]?.[lang] || [];
   const desc = pick(r.desc || RECIPE_DESC[r.id], lang);
-  const text = `${pick(r.name, lang)}\n` + r.ing.map(([n, q, u]) => `• ${ingName(n, lang)} – ${fmtQty(q, u, lang)}`).join('\n') + (steps.length ? '\n\n' + steps.join('\n') : '');
+  const serves = r.serves || 4; // amounts are kept for 4 people
+  const text = `${pick(r.name, lang)}\n` + r.ing.map(([n, q, u]) => `• ${ingName(n, lang)} – ${fmtQty(q * serves / 4, u, lang)}`).join('\n') + (steps.length ? '\n\n' + steps.join('\n') : '');
 
   return (
     <Screen header={
@@ -65,12 +66,12 @@ export default function RecipeDetail({ id, recipe, canCopy, back }) {
         <T v="caption" c="muted">{r.time} {t('min')}{hasPrice(r) ? ` · ${t('perServing', { c: money(cost(r, 4) / 4, lang) })}` : ''}</T>
       </View>
       {r.kid ? <View style={{ backgroundColor: color.kidsSoft, borderRadius: 16, padding: 12 }}><T v="caption" c="kids">{t('forKids')} {pick(r.kid, lang)}</T></View> : null}
-      <T v="heading">{t('ingFor', { n: 4 })}</T>
+      <T v="heading">{t('ingFor', { n: serves })}</T>
       <Card style={{ gap: 12 }}>
         {r.ing.map(([n, q, u]) => (
           <Row key={n + u} style={{ justifyContent: 'space-between' }}>
             <T>{ingName(n, lang)}</T>
-            <T v="caption" c="muted">{fmtQty(q, u, lang)}</T>
+            <T v="caption" c="muted">{fmtQty(q * serves / 4, u, lang)}</T>
           </Row>
         ))}
       </Card>

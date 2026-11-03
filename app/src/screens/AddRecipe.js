@@ -4,16 +4,21 @@ import * as ImagePicker from 'expo-image-picker';
 import { useStore } from '../store';
 import { LIMITS, TAG_KEYS, U, UNITS, unitName, validateRecipe } from '../logic';
 import { color } from '../theme';
-import { Button, Field, Icon, Pill, Row, RoundButton, Screen, T } from '../components/ui';
+import { Button, Field, Icon, Pill, Row, RoundButton, Screen, Stepper, T } from '../components/ui';
 
 const blank = () => ({ n: '', q: '', u: U, a: 'veg' });
-const empty = () => ({ name: '', desc: '', time: '30', steps: '', kid: '', tags: {}, ing: [blank(), blank(), blank()], photos: [] });
+const empty = () => ({ name: '', desc: '', time: '30', serves: 4, steps: '', kid: '', tags: {}, ing: [blank(), blank(), blank()], photos: [] });
+// The app keeps amounts for 4 people; the form shows them for the recipe's own number.
+const round = q => String(Math.round(q * 100) / 100);
 // One of your recipes, as the form shows it.
-const toForm = r => ({
-  name: r.name, desc: r.desc || '', time: String(r.time), steps: r.steps || '', kid: r.kid || '',
-  tags: Object.fromEntries(r.tags.map(k => [k, true])), photos: r.photos || [],
-  ing: r.ing.map(([n, q, u, a]) => ({ n, q: String(q), u, a: a || 'veg' })),
-});
+const toForm = r => {
+  const serves = r.serves || 4;
+  return {
+    name: r.name, desc: r.desc || '', time: String(r.time), serves, steps: r.steps || '', kid: r.kid || '',
+    tags: Object.fromEntries(r.tags.map(k => [k, true])), photos: r.photos || [],
+    ing: r.ing.map(([n, q, u, a]) => ({ n, q: round(q * serves / 4), u, a: a || 'veg' })),
+  };
+};
 
 /** A new recipe, or with `id`, changes to one of yours. */
 export default function AddRecipe({ id, back }) {
@@ -61,8 +66,10 @@ export default function AddRecipe({ id, back }) {
     const res = validateRecipe(form, editing ? recipes.filter(r => r.id !== id) : recipes, t);
     setErrors(res.errors);
     if (res.value) {
-      if (editing) updateRecipe({ ...res.value, id, desc: form.desc.trim() });
-      else addRecipe({ ...res.value, desc: form.desc.trim() });
+      const per4 = 4 / form.serves;
+      const r = { ...res.value, serves: form.serves, desc: form.desc.trim(), ing: res.value.ing.map(([n, q, ...rest]) => [n, q * per4, ...rest]) };
+      if (editing) updateRecipe({ ...r, id });
+      else addRecipe(r);
       back();
     }
     else scroll.current?.scrollTo?.({ y: 0, animated: true });
@@ -121,7 +128,11 @@ export default function AddRecipe({ id, back }) {
       {form.tags.kids ? <Field label={t('fKid')} placeholder={t('fKidPh')} value={form.kid} maxLength={100} onChangeText={v => update({ kid: v })} /> : null}
 
       <View style={{ gap: 8 }}>
-        <T v="label" c="muted">{t('fIng')}</T>
+        <Row style={{ justifyContent: 'space-between' }}>
+          <T v="label" c="muted">{t('fServes')}</T>
+          <Stepper value={form.serves} onChange={v => update({ serves: v })} />
+        </Row>
+        <T v="label" c="muted">{t('fIng', { n: form.serves })}</T>
         {form.ing.map((r, i) => {
           const bad = !!errors['ing.' + i];
           return (
