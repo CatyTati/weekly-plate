@@ -52,7 +52,7 @@ export default function AddRecipe({ back }) {
   const ingError = errors.ing || Object.entries(errors).find(([k]) => k.startsWith('ing.'))?.[1];
 
   return (
-    <Screen footer={<Button label={t('saveBtn')} onPress={save} />}>
+    <Screen scrollRef={scroll} footer={<Button label={t('saveBtn')} onPress={save} />}>
       <Row style={{ justifyContent: 'space-between' }}>
         <RoundButton icon="back" flip label={t('back')} onPress={back} />
         <T v="heading" center style={{ flex: 1 }}>{t('newRecipe')}</T>

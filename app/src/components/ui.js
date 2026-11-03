@@ -64,7 +64,7 @@ export function Icon({ name, c = 'ink', size = 22, w = 1.9, flip }) {
   );
 }
 
-export function Screen({ children, scroll = true, header, footer }) {
+export function Screen({ children, scroll = true, header, footer, scrollRef }) {
   const Body = scroll ? ScrollView : View;
   return (
     <View style={s.screen}>
@@ -74,7 +74,7 @@ export function Screen({ children, scroll = true, header, footer }) {
       </View>
       <SafeAreaView edges={['top']} style={{ flex: 1 }}>
         {header ? <View style={s.header}>{header}</View> : null}
-        <Body style={{ flex: 1 }} contentContainerStyle={scroll ? s.content : undefined} keyboardShouldPersistTaps="handled">
+        <Body ref={scroll ? scrollRef : undefined} style={{ flex: 1 }} contentContainerStyle={scroll ? s.content : undefined} keyboardShouldPersistTaps="handled">
           {scroll ? children : <View style={[s.content, { flex: 1 }]}>{children}</View>}
         </Body>
         {footer ? <View style={s.footer}>{footer}</View> : null}

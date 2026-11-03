@@ -80,6 +80,7 @@ export function StoreProvider({ children }) {
   const [ready, setReady] = useState(false);
   const [user, setUser] = useState(null);
   const [recovery, setRecovery] = useState(false); // opened from a password reset email
+  const [syncFailed, setSyncFailed] = useState(false); // a recipe or week did not reach the database
   const loadedFor = useRef(undefined); // the account whose data is in `state`
   const pushing = useRef(new Set()); // recipes being saved to the database
   const pushedWeeks = useRef({}); // what each week looked like when last saved
@@ -126,8 +127,8 @@ export function StoreProvider({ children }) {
     state.custom.filter(r => !r.cloud && !pushing.current.has(r.id)).forEach(r => {
       pushing.current.add(r.id);
       pushRecipe(r)
-        .then(cloud => setState(s => ({ ...s, custom: s.custom.map(x => (x.id === r.id ? { ...x, cloud } : x)) })))
-        .catch(() => {})
+        .then(cloud => { setSyncFailed(false); setState(s => ({ ...s, custom: s.custom.map(x => (x.id === r.id ? { ...x, cloud } : x)) })); })
+        .catch(e => { console.warn('Recipe upload failed:', e?.message || e); setSyncFailed(true); })
         .finally(() => pushing.current.delete(r.id));
     });
   }, [state.custom, userId]);
@@ -141,7 +142,7 @@ export function StoreProvider({ children }) {
         const json = JSON.stringify(days);
         if (!days || pushedWeeks.current[key] === json) return;
         pushedWeeks.current[key] = json;
-        pushWeek(key, days).catch(() => { delete pushedWeeks.current[key]; });
+        pushWeek(key, days).catch(e => { console.warn('Week upload failed:', e?.message || e); setSyncFailed(true); delete pushedWeeks.current[key]; });
       });
     }, 800);
     return () => clearTimeout(timer);
@@ -199,7 +200,7 @@ export function StoreProvider({ children }) {
     logout: async () => { try { await signOut(); } finally { setUser(null); } },
   }), []);
 
-  const value = useMemo(() => ({ state, ready, user, recovery, endRecovery: () => setRecovery(false), recipes, byId, t, rtl: isRtl(state.lang), ...actions }), [state, ready, user, recovery, recipes, byId, t, actions]);
+  const value = useMemo(() => ({ state, ready, user, recovery, syncFailed, endRecovery: () => setRecovery(false), recipes, byId, t, rtl: isRtl(state.lang), ...actions }), [state, ready, user, recovery, syncFailed, recipes, byId, t, actions]);
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 

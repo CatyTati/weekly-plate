@@ -37,7 +37,7 @@ export function Stories({ onCook, onMore, active }) {
 }
 
 export default function Home() {
-  const { state, user, t, byId } = useStore();
+  const { state, user, t, byId, syncFailed } = useStore();
   const { go, open, showFeedOf } = useNav();
   const lang = state.lang;
   const now = new Date();
@@ -61,6 +61,8 @@ export default function Home() {
         <T v="display">{greet}</T>
         <T v="caption" c="muted">{t('homeSub', { d: dayName(today, lang), p: t('people', { n: state.servings }), b: money(Math.max(0, state.budget - spent), lang) })}</T>
       </View>
+
+      {syncFailed ? <View style={{ backgroundColor: color.errorSoft, borderRadius: 16, padding: 12 }}><T v="caption" c="error">{t('syncFailed')}</T></View> : null}
 
       {show.stories ? <Stories onCook={id => showFeedOf(id)} onMore={() => go('community')} /> : null}
 
