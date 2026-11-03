@@ -132,6 +132,17 @@ export async function pushRecipe(r) {
   return id;
 }
 
+/** Saves changes to one of your recipes. Ingredients are replaced position by position. */
+export async function updateCloudRecipe(id, r) {
+  const { ingredients, ...row } = toRow(r);
+  const up = await supabase.from('recipes').update({ ...row, description: r.desc ? r.desc.slice(0, 160) : null }).eq('id', id);
+  if (up.error) throw up.error;
+  const ing = await supabase.from('recipe_ingredients').upsert(ingredients.map((i, position) => ({ recipe_id: id, position, ...i })));
+  if (ing.error) throw ing.error;
+  const extra = await supabase.from('recipe_ingredients').delete().eq('recipe_id', id).gte('position', ingredients.length);
+  if (extra.error) throw extra.error;
+}
+
 export async function deleteCloudRecipe(id) {
   const { error } = await supabase.from('recipes').delete().eq('id', id);
   if (error) throw error;

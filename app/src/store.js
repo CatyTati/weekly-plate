@@ -5,7 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { R, COOKS, makeT, isRtl, planWeek, swapDay as swap, weekKey } from './logic';
 import * as Linking from 'expo-linking';
 import { currentUser, handleAuthLink, isDemo, isRecoveryLink, onAuthChange, signOut } from './auth';
-import { deleteCloudRecipe, pushRecipe, pushWeek, syncProfileName } from './social';
+import { deleteCloudRecipe, pushRecipe, pushWeek, syncProfileName, updateCloudRecipe } from './social';
 
 const KEY = 'weekly-plate/v1';
 const DEFAULT = {
@@ -131,6 +131,14 @@ export function StoreProvider({ children }) {
         .catch(e => { console.warn('Recipe upload failed:', e?.message || e); setSyncFailed(true); })
         .finally(() => pushing.current.delete(r.id));
     });
+    // Recipes changed after they were saved. `dirty` is when, so a newer change is not lost.
+    state.custom.filter(r => r.cloud && r.dirty && !pushing.current.has(r.id)).forEach(r => {
+      pushing.current.add(r.id);
+      updateCloudRecipe(r.cloud, r)
+        .then(() => { setSyncFailed(false); setState(s => ({ ...s, custom: s.custom.map(x => (x.id === r.id && x.dirty === r.dirty ? { ...x, dirty: undefined } : x)) })); })
+        .catch(e => { console.warn('Recipe update failed:', e?.message || e); setSyncFailed(true); })
+        .finally(() => pushing.current.delete(r.id));
+    });
   }, [state.custom, userId]);
 
   // Save changed weeks a moment after the last change.
@@ -161,6 +169,7 @@ export function StoreProvider({ children }) {
     toggleItem: key => setState(s => ({ ...s, checked: { ...s.checked, [key]: !s.checked[key] } })),
     clearChecks: () => setState(s => ({ ...s, checked: {} })),
     addRecipe: r => setState(s => ({ ...s, custom: [...s.custom, r] })),
+    updateRecipe: r => setState(s => ({ ...s, custom: s.custom.map(x => (x.id === r.id ? { ...x, ...r, dirty: x.cloud ? Date.now() : undefined } : x)) })),
     deleteRecipe: id => setState(s => {
       const r = s.custom.find(x => x.id === id);
       if (r?.cloud && !isDemo) deleteCloudRecipe(r.cloud).catch(() => {});

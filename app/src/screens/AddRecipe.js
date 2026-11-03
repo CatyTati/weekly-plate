@@ -7,11 +7,20 @@ import { color } from '../theme';
 import { Button, Field, Icon, Pill, Row, RoundButton, Screen, T } from '../components/ui';
 
 const blank = () => ({ n: '', q: '', u: U, a: 'veg' });
+const empty = () => ({ name: '', desc: '', time: '30', steps: '', kid: '', tags: {}, ing: [blank(), blank(), blank()], photos: [] });
+// One of your recipes, as the form shows it.
+const toForm = r => ({
+  name: r.name, desc: r.desc || '', time: String(r.time), steps: r.steps || '', kid: r.kid || '',
+  tags: Object.fromEntries(r.tags.map(k => [k, true])), photos: r.photos || [],
+  ing: r.ing.map(([n, q, u, a]) => ({ n, q: String(q), u, a: a || 'veg' })),
+});
 
-export default function AddRecipe({ back }) {
-  const { state, t, recipes, addRecipe } = useStore();
+/** A new recipe, or with `id`, changes to one of yours. */
+export default function AddRecipe({ id, back }) {
+  const { state, t, recipes, byId, addRecipe, updateRecipe } = useStore();
   const lang = state.lang;
-  const [form, setForm] = useState({ name: '', desc: '', time: '30', steps: '', kid: '', tags: {}, ing: [blank(), blank(), blank()], photos: [] });
+  const editing = id ? byId(id) : null;
+  const [form, setForm] = useState(() => (editing ? toForm(editing) : empty()));
   const [errors, setErrors] = useState({});
   const [photoError, setPhotoError] = useState('');
   const [tried, setTried] = useState(false);
@@ -49,9 +58,13 @@ export default function AddRecipe({ back }) {
 
   function save() {
     setTried(true);
-    const res = validateRecipe(form, recipes, t);
+    const res = validateRecipe(form, editing ? recipes.filter(r => r.id !== id) : recipes, t);
     setErrors(res.errors);
-    if (res.value) { addRecipe({ ...res.value, desc: form.desc.trim() }); back(); }
+    if (res.value) {
+      if (editing) updateRecipe({ ...res.value, id, desc: form.desc.trim() });
+      else addRecipe({ ...res.value, desc: form.desc.trim() });
+      back();
+    }
     else scroll.current?.scrollTo?.({ y: 0, animated: true });
   }
 
@@ -62,7 +75,7 @@ export default function AddRecipe({ back }) {
     <Screen scrollRef={scroll} footer={<Button label={t('saveBtn')} onPress={save} />}>
       <Row style={{ justifyContent: 'space-between' }}>
         <RoundButton icon="back" flip label={t('back')} onPress={back} />
-        <T v="heading" center style={{ flex: 1 }}>{t('newRecipe')}</T>
+        <T v="heading" center style={{ flex: 1 }}>{t(editing ? 'editRecipe' : 'newRecipe')}</T>
         <Pressable onPress={back} hitSlop={8}><T v="bodyStrong" c="muted">{t('cancel')}</T></Pressable>
       </Row>
 

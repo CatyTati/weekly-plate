@@ -53,7 +53,7 @@ function Root() {
   else if (top?.screen === 'profile') body = <Profile key={top.params.id} id={top.params.id} back={nav.back} />;
   else if (top?.screen === 'people') body = <People tab={top.params.tab} back={nav.back} />;
   else if (top?.screen === 'comments') body = <Comments id={top.params.id} back={nav.back} />;
-  else if (top?.screen === 'add') body = <AddRecipe back={nav.back} />;
+  else if (top?.screen === 'add') body = <AddRecipe id={top.params?.id} back={nav.back} />;
   else if (top?.screen === 'prep') body = <Prep back={nav.back} />;
   else if (view === 'home') body = <Home />;
   else if (view === 'week') body = <Week open={nav.open} view={weekView} setView={setWeekView} />;

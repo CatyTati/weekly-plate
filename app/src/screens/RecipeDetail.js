@@ -1,28 +1,28 @@
 import React, { useState } from 'react';
-import { Image, ScrollView, Share, View, useWindowDimensions } from 'react-native';
+import { Share, View } from 'react-native';
 import { useStore } from '../store';
+import { useNav } from '../nav';
 import { cost, fmtQty, hasPrice, ingName, money, pick } from '../logic';
 import { RECIPE_STEPS } from '../steps';
 import AddToWeekSheet from './AddToWeek';
 import { RECIPE_DESC } from '../strings2';
 import { color } from '../theme';
 import { Button, Card, Pill, Row, RoundButton, Screen, T, Tag } from '../components/ui';
+import PhotoSlider from '../components/PhotoSlider';
 
-function Photo({ uri }) {
-  return uri
-    ? <Image source={{ uri }} style={{ width: '100%', height: 220, borderRadius: 28 }} resizeMode="cover" />
-    : (
-      <View style={{ height: 220, borderRadius: 28, backgroundColor: '#F6E3DA', alignItems: 'center', justifyContent: 'center' }}>
-        <View style={{ width: 150, height: 150, borderRadius: 75, backgroundColor: color.surface, alignItems: 'center', justifyContent: 'center' }}>
-          <View style={{ width: 110, height: 110, borderRadius: 55, backgroundColor: '#E59A86' }} />
-        </View>
+function NoPhoto() {
+  return (
+    <View style={{ height: 220, borderRadius: 28, backgroundColor: '#F6E3DA', alignItems: 'center', justifyContent: 'center' }}>
+      <View style={{ width: 150, height: 150, borderRadius: 75, backgroundColor: color.surface, alignItems: 'center', justifyContent: 'center' }}>
+        <View style={{ width: 110, height: 110, borderRadius: 55, backgroundColor: '#E59A86' }} />
       </View>
-    );
+    </View>
+  );
 }
 
 export default function RecipeDetail({ id, recipe, canCopy, back }) {
   const { state, t, byId, deleteRecipe, copyRecipe } = useStore();
-  const { width } = useWindowDimensions();
+  const { open } = useNav();
   const r = recipe || byId(id); // `recipe` is someone else's, shown read-only
   const theirs = !!recipe;
   const copied = theirs && state.custom.some(x => x.copiedFrom === recipe.cloud);
@@ -38,8 +38,11 @@ export default function RecipeDetail({ id, recipe, canCopy, back }) {
     <Screen header={
       <Row style={{ justifyContent: 'space-between' }}>
         {r.custom && !theirs ? (
-          <Pill label={confirmDel ? t('delConfirm') : t('del')} active={confirmDel} c="error" soft="errorSoft"
-            onPress={() => { if (confirmDel) { deleteRecipe(r.id); back(); } else setConfirmDel(true); }} />
+          <Row gap={8}>
+            <Pill label={t('edit')} onPress={() => open('add', { id: r.id })} />
+            <Pill label={confirmDel ? t('delConfirm') : t('del')} active={confirmDel} c="error" soft="errorSoft"
+              onPress={() => { if (confirmDel) { deleteRecipe(r.id); back(); } else setConfirmDel(true); }} />
+          </Row>
         ) : <View />}
         <RoundButton icon="close" label={t('close')} onPress={back} />
       </Row>
@@ -54,11 +57,7 @@ export default function RecipeDetail({ id, recipe, canCopy, back }) {
       </Row>
     )}>
       {picking ? <AddToWeekSheet id={r.id} onClose={() => setPicking(false)} /> : null}
-      {r.photos?.length > 1 ? (
-        <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -22 }}>
-          {r.photos.map(p => <View key={p} style={{ width, paddingHorizontal: 22 }}><Photo uri={p} /></View>)}
-        </ScrollView>
-      ) : <Photo uri={r.photos?.[0]} />}
+      <PhotoSlider photos={r.photos} height={220} radius={28} empty={<NoPhoto />} />
       <View style={{ gap: 8 }}>
         <T v="title">{pick(r.name, lang)}</T>
         {desc ? <T c="muted">{desc}</T> : null}
