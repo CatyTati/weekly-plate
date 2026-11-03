@@ -5,7 +5,7 @@ import { useNav } from '../nav';
 import { cost, fmtQty, hasPrice, ingName, money, pick } from '../logic';
 import AddToWeekSheet from './AddToWeek';
 import { color } from '../theme';
-import { Button, Card, Pill, Row, RoundButton, Screen, T, Tag } from '../components/ui';
+import { Button, Card, ConfirmDialog, Pill, Row, RoundButton, Screen, T, Tag } from '../components/ui';
 import PhotoSlider from '../components/PhotoSlider';
 
 function NoPhoto() {
@@ -39,8 +39,7 @@ export default function RecipeDetail({ id, recipe, canCopy, back }) {
         {r.custom && !theirs ? (
           <Row gap={8}>
             <Pill label={t('edit')} onPress={() => open('add', { id: r.id })} />
-            <Pill label={confirmDel ? t('delConfirm') : t('del')} active={confirmDel} c="error" soft="errorSoft"
-              onPress={() => { if (confirmDel) { deleteRecipe(r.id); back(); } else setConfirmDel(true); }} />
+            <Pill label={t('del')} c="error" soft="errorSoft" onPress={() => setConfirmDel(true)} />
           </Row>
         ) : <View />}
         <RoundButton icon="close" label={t('close')} onPress={back} />
@@ -56,6 +55,10 @@ export default function RecipeDetail({ id, recipe, canCopy, back }) {
       </Row>
     )}>
       {picking ? <AddToWeekSheet id={r.id} onClose={() => setPicking(false)} /> : null}
+      {confirmDel ? (
+        <ConfirmDialog danger title={t('delTitle')} message={t('delBody', { n: pick(r.name, lang) })} confirmLabel={t('del')}
+          onCancel={() => setConfirmDel(false)} onConfirm={() => { setConfirmDel(false); deleteRecipe(r.id); back(); }} />
+      ) : null}
       <PhotoSlider photos={r.photos} height={220} radius={28} empty={<NoPhoto />} />
       <View style={{ gap: 8 }}>
         <T v="title">{pick(r.name, lang)}</T>

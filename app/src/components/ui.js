@@ -4,7 +4,7 @@
 // puts Hebrew on the right and 'right' would put it on the left. TextInput doesn't
 // swap like this, so Field still asks for 'right'.
 import React from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { color, font, onThemeChange, radius, shadow, tagColor, type } from '../theme';
@@ -170,6 +170,32 @@ export function Field({ label, error, style, inputStyle, ...input }) {
         style={[s.input, { textAlign: rtl ? 'right' : 'left' }, error ? s.inputError : null, inputStyle]} {...input} />
       {error ? <T v="caption" c="error">{error}</T> : null}
     </View>
+  );
+}
+
+/** A centered "are you sure?" box. `danger` makes the confirm button red. */
+export function ConfirmDialog({ title, message, confirmLabel, danger, onConfirm, onCancel }) {
+  const { t, rtl } = useStore();
+  return (
+    <Modal visible transparent animationType="fade" onRequestClose={onCancel}>
+      <View style={{ flex: 1, justifyContent: 'center', padding: 28, direction: rtl ? 'rtl' : 'ltr' }}>
+        <Pressable style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.45)' }]} accessibilityLabel={t('cancel')} onPress={onCancel} />
+        <View accessibilityViewIsModal style={{ backgroundColor: color.surface, borderRadius: 24, padding: 22, gap: 8, ...shadow }}>
+          <T v="title" center>{title}</T>
+          {message ? <T c="muted" center>{message}</T> : null}
+          <View style={{ gap: 8, marginTop: 10 }}>
+            <Pressable accessibilityRole="button" onPress={onConfirm}
+              style={({ pressed }) => [s.btn, { backgroundColor: danger ? color.error : color.accent, opacity: pressed ? 0.85 : 1 }]}>
+              <T v="bodyStrong" c="onAccent" center>{confirmLabel}</T>
+            </Pressable>
+            <Pressable accessibilityRole="button" onPress={onCancel}
+              style={({ pressed }) => [s.btn, { backgroundColor: color.bg, opacity: pressed ? 0.85 : 1 }]}>
+              <T v="bodyStrong" c="muted" center>{t('cancel')}</T>
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    </Modal>
   );
 }
 
