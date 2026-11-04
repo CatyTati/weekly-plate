@@ -77,7 +77,7 @@ function WeekStrip({ plan, today, onPress }) {
   );
 }
 
-/** How many people follow you and you follow, as small chips in the top bar. A dot means new requests. */
+/** How many people follow you and you follow, as a number with its name under it. A dot means new requests. */
 function People({ me }) {
   const { state, t } = useStore();
   const { open } = useNav();
@@ -91,20 +91,22 @@ function People({ me }) {
     return () => { live = false; };
   }, [me]);
   if (!counts) return null;
-  // A small chip: icon and number. Tapping opens that list.
-  const chip = (icon, n, label, tab, dot) => (
-    <Pressable onPress={() => open('people', { tab })} accessibilityRole="button" accessibilityLabel={`${num(n, state.lang)} ${label}`} hitSlop={4}
-      style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, height: 34, borderRadius: 17,
-        backgroundColor: color.surface, borderWidth: 1, borderColor: color.edge, opacity: pressed ? 0.75 : 1 })}>
-      <Icon name={icon} c="accent" size={16} />
-      <T v="bodyStrong">{num(n, state.lang)}</T>
-      {dot ? <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: color.accent }} /> : null}
+  // Tapping one opens that list.
+  const stat = (n, label, tab, dot) => (
+    <Pressable onPress={() => open('people', { tab })} accessibilityRole="button" accessibilityLabel={`${num(n, state.lang)} ${label}`} hitSlop={6}
+      style={({ pressed }) => ({ alignItems: 'center', minWidth: 52, opacity: pressed ? 0.6 : 1 })}>
+      <Row gap={4}>
+        <T v="bodyStrong">{num(n, state.lang)}</T>
+        {dot ? <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: color.accent }} /> : null}
+      </Row>
+      <T v="label" c="muted" numberOfLines={1}>{label}</T>
     </Pressable>
   );
   return (
-    <Row gap={6}>
-      {chip('users', counts.followers, t('followers_tab'), counts.requests ? 'requests' : 'followers', counts.requests > 0)}
-      {chip('userCheck', counts.following, t('followingTab'), 'followingTab')}
+    <Row gap={10} style={{ backgroundColor: color.surface, borderRadius: 18, borderWidth: 1, borderColor: color.edge, paddingHorizontal: 10, paddingVertical: 4 }}>
+      {stat(counts.followers, t('followers_tab'), counts.requests ? 'requests' : 'followers', counts.requests > 0)}
+      <View style={{ width: 1, alignSelf: 'stretch', marginVertical: 4, backgroundColor: color.edge }} />
+      {stat(counts.following, t('followingTab'), 'followingTab')}
     </Row>
   );
 }
