@@ -7,7 +7,7 @@ import { Button, Card, CopiedNote, Field, Header, Icon, Pill, Row, RoundButton, 
 import PhotoSlider from '../components/PhotoSlider';
 import FoodArt from '../components/FoodArt';
 
-const PICTURE = 130;
+const PICTURE = 200; // same as the feed
 const likeKey = r => `recipe:${r.id}`; // feed posts share state.liked
 const describe = (r, lang) => pick(r.desc, lang);
 
@@ -17,7 +17,8 @@ export function RecipeList({ open, onPick }) {
   const lang = state.lang;
   const [filter, setFilter] = useState('all');
   const [q, setQ] = useState('');
-  const list = recipes.filter(r => (filter === 'all' || r.tags.includes(filter)) && (!q || pick(r.name, lang).toLowerCase().includes(q.toLowerCase())));
+  // Newest first: recipes are kept in the order they were added.
+  const list = [...recipes].reverse().filter(r => (filter === 'all' || r.tags.includes(filter)) && (!q || pick(r.name, lang).toLowerCase().includes(q.toLowerCase())));
   return (
     <>
       {onPick ? null : <Button kind="secondary" icon="plus" label={t('addRecipe')} onPress={() => open('add')} />}
