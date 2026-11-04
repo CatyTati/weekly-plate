@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { ActivityIndicator, View, useColorScheme } from 'react-native';
+import { ActivityIndicator, StyleSheet, View, useColorScheme } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useFonts, Rubik_300Light, Rubik_400Regular, Rubik_500Medium } from '@expo-google-fonts/rubik';
@@ -45,12 +45,20 @@ function Root() {
   if (!ready) return <View style={{ flex: 1, backgroundColor: color.bg, alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator color={color.accent} /></View>;
 
   const top = stack[stack.length - 1];
+  // A recipe opened while choosing a dinner sits over the list, so going back keeps your place in it.
+  const picking = top?.screen === 'pick' ? top : top?.screen === 'recipe' && stack[stack.length - 2]?.screen === 'pick' ? stack[stack.length - 2] : null;
+  const recipeView = top?.screen === 'recipe' ? <RecipeDetail id={top.params.id} recipe={top.params.recipe} canCopy={top.params.canCopy} pickFor={top.params.pickFor} back={nav.back} /> : null;
   let body;
   if (recovery && user) body = <NewPassword />;
   else if (!user) body = <Auth onSignedIn={u => { signedIn(u); nav.go('home'); }} />;
   else if (!state.onboarded) body = <Onboarding />;
-  else if (top?.screen === 'recipe') body = <RecipeDetail id={top.params.id} recipe={top.params.recipe} canCopy={top.params.canCopy} pickFor={top.params.pickFor} back={nav.back} />;
-  else if (top?.screen === 'pick') body = <PickRecipe week={top.params.week} day={top.params.day} open={nav.open} back={nav.back} />;
+  else if (picking) body = (
+    <View style={{ flex: 1 }}>
+      <PickRecipe week={picking.params.week} day={picking.params.day} open={nav.open} back={nav.back} />
+      {recipeView ? <View style={[StyleSheet.absoluteFill, { backgroundColor: color.bg }]}>{recipeView}</View> : null}
+    </View>
+  );
+  else if (recipeView) body = recipeView;
   else if (top?.screen === 'profile') body = <Profile key={top.params.id} id={top.params.id} back={nav.back} />;
   else if (top?.screen === 'people') body = <People tab={top.params.tab} back={nav.back} />;
   else if (top?.screen === 'comments') body = <Comments recipeId={top.params.recipeId} name={top.params.name} owner={top.params.owner} back={nav.back} />;
