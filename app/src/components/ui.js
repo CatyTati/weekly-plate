@@ -37,6 +37,8 @@ const ICONS = {
   trash: <Path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6" />,
   back: <Path d="m15 18-6-6 6-6" />,
   next: <Path d="m9 18 6-6-6-6" />,
+  userCheck: <><Circle cx="9" cy="7" r="4" /><Path d="M2 21v-2a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v2M16 11l2 2 4-4" /></>,
+  lock: <><Rect x="5" y="11" width="14" height="10" rx="2" /><Path d="M8 11V7a4 4 0 0 1 8 0v4" /></>,
   search: <><Circle cx="11" cy="11" r="7" /><Path d="m20 20-3.5-3.5" /></>,
   more: <><Circle cx="5" cy="12" r="1.2" /><Circle cx="12" cy="12" r="1.2" /><Circle cx="19" cy="12" r="1.2" /></>,
   share: <Path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7M16 6l-4-4-4 4M12 2v13" />,
@@ -60,10 +62,11 @@ const ICONS = {
   book: <><Path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V2H6.5A2.5 2.5 0 0 0 4 4.5v15z" /><Path d="M6.5 17A2.5 2.5 0 0 0 4 19.5 2.5 2.5 0 0 0 6.5 22H20v-5" /></>,
 };
 
-export function Icon({ name, c = 'ink', size = 22, w = 1.9, flip }) {
+/** A line icon. `filled` paints the inside too, as for a liked heart. */
+export function Icon({ name, c = 'ink', size = 22, w = 1.9, flip, filled }) {
   const { rtl } = useStore();
   return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color[c] || c} strokeWidth={w}
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill={filled ? color[c] || c : 'none'} stroke={color[c] || c} strokeWidth={w}
       strokeLinecap="round" strokeLinejoin="round" style={flip && rtl ? { transform: [{ scaleX: -1 }] } : null}>
       {ICONS[name]}
     </Svg>

@@ -1,5 +1,5 @@
 // Home: greeting, tonight's dinner, the week at a glance and my recipes.
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Image, Pressable, View } from 'react-native';
 import { useStore } from '../store';
 import { useNav } from '../nav';
@@ -8,6 +8,8 @@ import { color, font } from '../theme';
 import { Avatar, Card, Icon, MenuButton, Row, RoundButton, Screen, T } from '../components/ui';
 import FoodArt from '../components/FoodArt';
 import { RecipeList } from './Recipes';
+import { isDemo } from '../auth';
+import { myConnections } from '../social';
 
 /** Tonight's dinner, or a nudge to choose one. */
 function Tonight({ recipe, onOpen, onPick }) {
@@ -75,6 +77,38 @@ function WeekStrip({ plan, today, onPress }) {
   );
 }
 
+/** How many people follow you and you follow, as small chips in the top bar. A dot means new requests. */
+function People({ me }) {
+  const { state, t } = useStore();
+  const { open } = useNav();
+  const [counts, setCounts] = useState(null);
+  useEffect(() => {
+    if (isDemo || !me) return undefined;
+    let live = true;
+    myConnections(me).then(c => {
+      if (live) setCounts({ followers: c.followers.length, following: c.following.filter(p => p.status === 'approved').length, requests: c.requests.length });
+    }).catch(() => {});
+    return () => { live = false; };
+  }, [me]);
+  if (!counts) return null;
+  // A small chip: icon and number. Tapping opens that list.
+  const chip = (icon, n, label, tab, dot) => (
+    <Pressable onPress={() => open('people', { tab })} accessibilityRole="button" accessibilityLabel={`${num(n, state.lang)} ${label}`} hitSlop={4}
+      style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, height: 34, borderRadius: 17,
+        backgroundColor: color.surface, borderWidth: 1, borderColor: color.edge, opacity: pressed ? 0.75 : 1 })}>
+      <Icon name={icon} c="accent" size={16} />
+      <T v="bodyStrong">{num(n, state.lang)}</T>
+      {dot ? <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: color.accent }} /> : null}
+    </Pressable>
+  );
+  return (
+    <Row gap={6}>
+      {chip('users', counts.followers, t('followers_tab'), counts.requests ? 'requests' : 'followers', counts.requests > 0)}
+      {chip('userCheck', counts.following, t('followingTab'), 'followingTab')}
+    </Row>
+  );
+}
+
 export default function Home() {
   const { state, user, t, byId, recipes, syncFailed } = useStore();
   const { go, open } = useNav();
@@ -89,6 +123,7 @@ export default function Home() {
       <Row gap={12}>
         <MenuButton />
         <View style={{ flex: 1 }} />
+        <People me={user?.id} />
         <Pressable onPress={() => go('settings')} accessibilityRole="button" accessibilityLabel={t('settings')}>
           <Avatar letter={name[0]} size={40} />
         </Pressable>

@@ -50,7 +50,7 @@ export function RecipeList({ open, onPick, showAdd = true }) {
               <Row gap={6} style={{ flex: 1, flexWrap: 'wrap' }}>{r.tags.map(k => <Tag key={k} k={k} />)}</Row>
               <Pressable onPress={() => toggleLike(likeKey(r))} hitSlop={8} accessibilityRole="button" accessibilityState={{ selected: !!state.liked[likeKey(r)] }} accessibilityLabel={t('like')}>
                 <Row gap={6}>
-                  <Icon name="heart" c={state.liked[likeKey(r)] ? 'accent' : 'muted'} size={20} w={state.liked[likeKey(r)] ? 2.4 : 1.9} />
+                  <Icon name="heart" c={state.liked[likeKey(r)] ? 'accent' : 'muted'} size={20} filled={!!state.liked[likeKey(r)]} />
                   <T v="caption" c="muted">{num(state.liked[likeKey(r)] ? 1 : 0, lang)}</T>
                 </Row>
               </Pressable>
