@@ -103,16 +103,10 @@ export function shoppingList(recipes, servings) {
     if (!map[k]) map[k] = { key: k, n, u, a, q: 0 };
     map[k].q += q * factor(servings);
   }
-  return Object.values(map);
+  return Object.values(map).sort((x, y) => x.n.localeCompare(y.n));
 }
 export function listText(items, lang, t) {
-  let s = t('listTitle', { app: t('app') }) + '\n';
-  for (const a of AISLE_ORDER) {
-    const l = items.filter(i => i.a === a);
-    if (!l.length) continue;
-    s += '\n' + aisleName(a, lang) + '\n' + l.map(i => '• ' + ingName(i.n, lang) + ' – ' + fmtQty(i.q, i.u, lang)).join('\n') + '\n';
-  }
-  return s;
+  return t('listTitle', { app: t('app') }) + '\n\n' + items.map(i => '• ' + ingName(i.n, lang) + ' – ' + fmtQty(i.q, i.u, lang)).join('\n') + '\n';
 }
 
 /* ---------- validation (same limits as the backend) ---------- */
