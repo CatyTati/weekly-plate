@@ -5,7 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { makeT, isRtl, planWeek, swapDay as swap, weekKey } from './logic';
 import * as Linking from 'expo-linking';
 import { currentUser, handleAuthLink, isDemo, isRecoveryLink, onAuthChange, signOut } from './auth';
-import { deleteCloudRecipe, pushRecipe, pushWeek, syncProfileName, updateCloudRecipe } from './social';
+import { deleteCloudRecipe, pushRecipe, pushWeek, syncPhotos, syncProfileName, updateCloudRecipe } from './social';
 
 const KEY = 'weekly-plate/v1';
 const DEFAULT = {
@@ -141,6 +141,15 @@ export function StoreProvider({ children }) {
       updateCloudRecipe(r.cloud, r)
         .then(() => { setSyncFailed(false); setState(s => ({ ...s, custom: s.custom.map(x => (x.id === r.id && x.dirty === r.dirty ? { ...x, dirty: undefined } : x)) })); })
         .catch(e => { console.warn('Recipe update failed:', e?.message || e); setSyncFailed(true); })
+        .finally(() => pushing.current.delete(r.id));
+    });
+    // Photos follow once the recipe itself is saved. `photosSaved` is the list last saved.
+    state.custom.filter(r => r.cloud && !r.dirty && !pushing.current.has(r.id) && JSON.stringify(r.photos || []) !== r.photosSaved).forEach(r => {
+      const sent = JSON.stringify(r.photos || []);
+      pushing.current.add(r.id);
+      syncPhotos(userId, r.cloud, r.photos || [])
+        .then(urls => setState(s => ({ ...s, custom: s.custom.map(x => (x.id === r.id && JSON.stringify(x.photos || []) === sent ? { ...x, photos: urls, photosSaved: JSON.stringify(urls) } : x)) })))
+        .catch(e => { console.warn('Photo upload failed:', e?.message || e); setSyncFailed(true); })
         .finally(() => pushing.current.delete(r.id));
     });
   }, [state.custom, userId]);

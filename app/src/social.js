@@ -4,6 +4,7 @@
 // follows and public recipes; only approved followers can read someone's weekly plans;
 // a private account approves each new follower. In demo mode there is no server.
 import { isDemo, supabase } from './auth';
+import * as ImageManipulator from 'expo-image-manipulator';
 import { UNIT_T } from './data.js';
 
 const NAME_MAX = 40;
@@ -121,8 +122,51 @@ const fromRow = row => ({
   kid: row.kid_note || undefined, keep: row.keeps_days || 0, steps: row.method, desc: row.description || '',
   ing: [...(row.recipe_ingredients || [])].sort((a, b) => a.position - b.position)
     .map(i => [i.name, Number(i.qty), UNIT_FROM_CODE[i.unit] || i.unit, i.aisle, 0]),
-  photos: [],
+  photos: [...(row.recipe_photos || [])].sort((a, b) => a.position - b.position).map(p => photoUrl(p.storage_path)),
 });
+
+/* ---------- photos ---------- */
+// Photos live in the public "recipe-photos" bucket, each user in a folder named after their id.
+
+const BUCKET = 'recipe-photos';
+const photoUrl = path => supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
+const pathOf = url => url.split(`/object/public/${BUCKET}/`)[1];
+const isWeb = uri => /^https?:/.test(uri);
+
+// A photo from this phone becomes a JPEG of at most 1280px wide; one from the web is copied as is.
+async function photoBytes(uri) {
+  if (isWeb(uri)) return new Uint8Array(await (await fetch(uri)).arrayBuffer());
+  const img = await ImageManipulator.manipulateAsync(uri, [{ resize: { width: 1280 } }],
+    { compress: 0.75, format: ImageManipulator.SaveFormat.JPEG, base64: true });
+  return Uint8Array.from(atob(img.base64), c => c.charCodeAt(0));
+}
+
+/**
+ * Saves a recipe's photos in the database, in order, and removes the ones that were taken off.
+ * Returns the photo list as web addresses.
+ */
+export async function syncPhotos(owner, recipeId, photos) {
+  const paths = [];
+  for (const uri of photos.slice(0, 3)) {
+    const mine = isWeb(uri) && pathOf(uri)?.startsWith(owner + '/');
+    if (mine) { paths.push(pathOf(uri)); continue; }
+    const path = `${owner}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`;
+    const { error } = await supabase.storage.from(BUCKET).upload(path, await photoBytes(uri), { contentType: 'image/jpeg' });
+    if (error) throw error;
+    paths.push(path);
+  }
+  const old = await supabase.from('recipe_photos').select('storage_path').eq('recipe_id', recipeId);
+  if (old.error) throw old.error;
+  const del = await supabase.from('recipe_photos').delete().eq('recipe_id', recipeId);
+  if (del.error) throw del.error;
+  if (paths.length) {
+    const ins = await supabase.from('recipe_photos').insert(paths.map((storage_path, position) => ({ recipe_id: recipeId, position, storage_path })));
+    if (ins.error) throw ins.error;
+  }
+  const gone = old.data.map(p => p.storage_path).filter(p => !paths.includes(p));
+  if (gone.length) await supabase.storage.from(BUCKET).remove(gone);
+  return paths.map(photoUrl);
+}
 
 /** Saves one of your recipes so others can see it. Returns its id in the database. */
 export async function pushRecipe(r) {
@@ -144,12 +188,15 @@ export async function updateCloudRecipe(id, r) {
 }
 
 export async function deleteCloudRecipe(id) {
+  const photos = await supabase.from('recipe_photos').select('storage_path').eq('recipe_id', id);
   const { error } = await supabase.from('recipes').delete().eq('id', id);
   if (error) throw error;
+  const paths = (photos.data || []).map(p => p.storage_path);
+  if (paths.length) await supabase.storage.from(BUCKET).remove(paths);
 }
 
 export async function recipesOf(owner) {
-  const { data, error } = await supabase.from('recipes').select('*, recipe_ingredients(*)')
+  const { data, error } = await supabase.from('recipes').select('*, recipe_ingredients(*), recipe_photos(*)')
     .eq('owner_id', owner).order('created_at', { ascending: false });
   if (error) throw error;
   return data.map(fromRow);

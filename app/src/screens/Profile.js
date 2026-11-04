@@ -10,6 +10,7 @@ import { color } from '../theme';
 import { Avatar, Button, Card, Pill, Row, RoundButton, Screen, T, Tag } from '../components/ui';
 import { followLabel, useFollowing } from './People';
 import { CopyWeekSheet } from './Feed';
+import PhotoSlider from '../components/PhotoSlider';
 
 export default function Profile({ id, back }) {
   const { state, user, t, byId } = useStore();
@@ -81,6 +82,7 @@ export default function Profile({ id, back }) {
           {(recipes || []).map(r => (
             <Pressable key={r.id} onPress={() => open('recipe', { recipe: r, canCopy: approved })}>
               <Card style={{ gap: 6 }}>
+                {r.photos.length ? <PhotoSlider photos={r.photos} height={150} radius={16} /> : null}
                 <T v="bodyStrong">{r.name}</T>
                 <T v="caption" c="muted">{r.time} {t('min')}</T>
                 {r.desc ? <T c="muted" numberOfLines={2}>{r.desc}</T> : null}
