@@ -7,7 +7,7 @@ import { useNav } from '../nav';
 import { getProfile, recipesOf, weeksOf } from '../social';
 import { dayName, keyToDate, num, pick, weekKey, weekRangeLabel } from '../logic';
 import { color } from '../theme';
-import { Avatar, Button, Card, Pill, Row, RoundButton, Screen, T, Tag } from '../components/ui';
+import { Avatar, Button, Card, CopiedNote, Pill, Row, RoundButton, Screen, T, Tag } from '../components/ui';
 import { followLabel, useFollowing } from './People';
 import { CopyWeekSheet } from './Feed';
 import PhotoSlider from '../components/PhotoSlider';
@@ -28,10 +28,10 @@ export default function Profile({ id, back }) {
 
   const load = useCallback(() => {
     setFailed(false);
-    Promise.all([getProfile(id), recipesOf(id)])
+    Promise.all([getProfile(id), recipesOf(id, me)])
       .then(([p, rs]) => { setProfile(p); setRecipes(rs.map(r => ({ ...r, ownerName: p.name }))); })
       .catch(() => setFailed(true));
-  }, [id]);
+  }, [id, me]);
   useEffect(load, [load]);
   useEffect(() => {
     if (!approved) { setWeeks([]); return; }
@@ -84,6 +84,7 @@ export default function Profile({ id, back }) {
               <Card style={{ gap: 6 }}>
                 {r.photos.length ? <PhotoSlider photos={r.photos} height={150} radius={16} /> : null}
                 <T v="bodyStrong">{r.name}</T>
+                <CopiedNote recipe={r} />
                 <T v="caption" c="muted">{r.time} {t('min')}</T>
                 {r.desc ? <T c="muted" numberOfLines={2}>{r.desc}</T> : null}
                 <Row gap={6} style={{ flexWrap: 'wrap' }}>{r.tags.map(k => <Tag key={k} k={k} />)}</Row>

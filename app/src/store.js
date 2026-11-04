@@ -2,10 +2,10 @@
 // Your own recipes and weekly plans are also saved to Supabase, so followers can see them.
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { makeT, isRtl, planWeek, swapDay as swap, weekKey } from './logic';
+import { makeT, isRtl, mergeMine, planWeek, swapDay as swap, weekKey } from './logic';
 import * as Linking from 'expo-linking';
 import { currentUser, handleAuthLink, isDemo, isRecoveryLink, onAuthChange, signOut } from './auth';
-import { deleteCloudRecipe, pushRecipe, pushWeek, syncPhotos, syncProfileName, updateCloudRecipe } from './social';
+import { deleteCloudRecipe, loadMine, noteCopy, pushRecipe, pushWeek, syncPhotos, syncProfileName, updateCloudRecipe } from './social';
 
 const KEY = 'weekly-plate/v1';
 const DEFAULT = {
@@ -49,7 +49,9 @@ function copyInto(custom, r) {
   if (have) return { custom, id: have.id };
   const taken = custom.some(x => x.name.toLowerCase() === r.name.toLowerCase());
   const id = 'c' + Date.now() + Math.random().toString(36).slice(2, 6);
-  const copy = { ...r, id, cloud: undefined, owner: undefined, copiedFrom: r.cloud, name: taken && r.ownerName ? `${r.name} · ${r.ownerName}`.slice(0, 60) : r.name };
+  // copiedFromName stays on this phone: it isn't sent to the database, so only you see it.
+  const copy = { ...r, id, cloud: undefined, owner: undefined, ownerName: undefined, photosSaved: undefined, copiedFrom: r.cloud, copiedFromName: r.ownerName || '', copyNoted: undefined,
+    name: taken && r.ownerName ? `${r.name} · ${r.ownerName}`.slice(0, 60) : r.name };
   return { custom: [...custom, copy], id };
 }
 
@@ -86,7 +88,9 @@ export function StoreProvider({ children }) {
   const [recovery, setRecovery] = useState(false); // opened from a password reset email
   const [syncFailed, setSyncFailed] = useState(false); // a recipe or week did not reach the database
   const loadedFor = useRef(undefined); // the account whose data is in `state`
+  const [syncedFor, setSyncedFor] = useState(undefined); // the account whose data was merged with the database
   const pushing = useRef(new Set()); // recipes being saved to the database
+  const noting = useRef(new Set()); // copies being recorded for their original cook
   const pushedWeeks = useRef({}); // what each week looked like when last saved
 
   const [authChecked, setAuthChecked] = useState(false);
@@ -112,11 +116,17 @@ export function StoreProvider({ children }) {
     let live = true;
     loadedFor.current = undefined;
     pushedWeeks.current = {};
+    setSyncedFor(undefined);
     loadFor(userId).catch(() => null).then(saved => {
       if (!live) return;
       setState(cur => saved || { ...DEFAULT, lang: cur.lang });
       loadedFor.current = userId;
       setReady(true);
+      if (isDemo || !userId) return;
+      loadMine(userId)
+        .then(server => { if (live) setState(cur => mergeMine(cur, server)); })
+        .catch(e => console.warn('Loading from the database failed:', e?.message || e)) // offline: keep what's on the phone
+        .finally(() => { if (live) setSyncedFor(userId); });
     });
     return () => { live = false; };
   }, [userId, authChecked]);
@@ -125,13 +135,13 @@ export function StoreProvider({ children }) {
     if (loadedFor.current === userId) AsyncStorage.setItem(keyFor(userId), JSON.stringify(state)).catch(() => {});
   }, [state, userId]);
 
-  // Save your recipes to the database, so followers can see them.
+  // Save your recipes to the database, so followers can see them. Waits until the database was read.
   useEffect(() => {
-    if (isDemo || !userId || loadedFor.current !== userId) return;
+    if (isDemo || !userId || loadedFor.current !== userId || syncedFor !== userId) return;
     state.custom.filter(r => !r.cloud && !pushing.current.has(r.id)).forEach(r => {
       pushing.current.add(r.id);
       pushRecipe(r)
-        .then(cloud => { setSyncFailed(false); setState(s => ({ ...s, custom: s.custom.map(x => (x.id === r.id ? { ...x, cloud } : x)) })); })
+        .then(({ id: cloud, noted }) => { setSyncFailed(false); setState(s => ({ ...s, custom: s.custom.map(x => (x.id === r.id ? { ...x, cloud, copyNoted: noted || undefined } : x)) })); })
         .catch(e => { console.warn('Recipe upload failed:', e?.message || e); setSyncFailed(true); })
         .finally(() => pushing.current.delete(r.id));
     });
@@ -143,6 +153,14 @@ export function StoreProvider({ children }) {
         .catch(e => { console.warn('Recipe update failed:', e?.message || e); setSyncFailed(true); })
         .finally(() => pushing.current.delete(r.id));
     });
+    // A saved copy tells the cook it came from, once.
+    state.custom.filter(r => r.cloud && r.copiedFrom && !r.copyNoted && !noting.current.has(r.id)).forEach(r => {
+      noting.current.add(r.id);
+      noteCopy(r.cloud, r.copiedFrom)
+        .then(() => setState(s => ({ ...s, custom: s.custom.map(x => (x.id === r.id ? { ...x, copyNoted: true } : x)) })))
+        .catch(e => console.warn('Copy note not saved:', e?.message || e))
+        .finally(() => noting.current.delete(r.id));
+    });
     // Photos follow once the recipe itself is saved. `photosSaved` is the list last saved.
     state.custom.filter(r => r.cloud && !r.dirty && !pushing.current.has(r.id) && JSON.stringify(r.photos || []) !== r.photosSaved).forEach(r => {
       const sent = JSON.stringify(r.photos || []);
@@ -152,11 +170,11 @@ export function StoreProvider({ children }) {
         .catch(e => { console.warn('Photo upload failed:', e?.message || e); setSyncFailed(true); })
         .finally(() => pushing.current.delete(r.id));
     });
-  }, [state.custom, userId]);
+  }, [state.custom, userId, syncedFor]);
 
   // Save changed weeks a moment after the last change.
   useEffect(() => {
-    if (isDemo || !userId || loadedFor.current !== userId) return undefined;
+    if (isDemo || !userId || loadedFor.current !== userId || syncedFor !== userId) return undefined;
     const timer = setTimeout(() => {
       Object.entries(state.weeks).forEach(([key, plan]) => {
         const days = cloudDays(plan, state.custom);
@@ -167,7 +185,7 @@ export function StoreProvider({ children }) {
       });
     }, 800);
     return () => clearTimeout(timer);
-  }, [state.weeks, state.custom, userId]);
+  }, [state.weeks, state.custom, userId, syncedFor]);
 
   const recipes = state.custom;
   const byId = useCallback(id => recipes.find(r => r.id === id), [recipes]);

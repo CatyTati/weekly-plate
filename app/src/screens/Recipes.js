@@ -3,7 +3,7 @@ import { Pressable, View } from 'react-native';
 import { useStore } from '../store';
 import { TAG_KEYS, cost, dayName, hasPrice, money, num, pick } from '../logic';
 import { color } from '../theme';
-import { Button, Card, Field, Header, Icon, Pill, Row, RoundButton, Screen, T, Tag } from '../components/ui';
+import { Button, Card, CopiedNote, Field, Header, Icon, Pill, Row, RoundButton, Screen, T, Tag } from '../components/ui';
 import PhotoSlider from '../components/PhotoSlider';
 import FoodArt from '../components/FoodArt';
 
@@ -46,6 +46,7 @@ export function RecipeList({ open, onPick }) {
               </Pressable>
             </Row>
             <T v="title" numberOfLines={2}>{pick(r.name, lang)}</T>
+            <CopiedNote recipe={r} />
             <Row gap={6}>
               <Icon name="clock" c="muted" size={16} />
               <T v="caption" c="muted">{r.time} {t('min')}{hasPrice(r) ? ` · ${t('perServing', { c: money(cost(r, state.servings) / state.servings, lang) })}` : ''}</T>

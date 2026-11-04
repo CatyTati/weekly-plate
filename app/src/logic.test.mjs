@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { makeT, planWeek, swapDay, shoppingList, fmtQty, validateRecipe, prepPlan, cost, money, validateSignIn, validateSignUp, greetingKey, timeAgo, firstName } from './logic.js';
+import { makeT, mergeMine, planWeek, swapDay, shoppingList, fmtQty, validateRecipe, prepPlan, cost, money, validateSignIn, validateSignUp, greetingKey, timeAgo, firstName } from './logic.js';
 
 const seeded = (seed = 1) => () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
 const t = makeT('en');
@@ -127,4 +127,32 @@ test('time ago and first name', () => {
   assert.equal(timeAgo(52, t), t('daysAgo', { n: 2 }));
   assert.equal(firstName({ name: 'Tanya Lukin' }), 'Tanya');
   assert.equal(firstName({ email: 'tanya@example.com' }), 'tanya');
+});
+
+test('the database wins on sign-in, except changes not saved yet', () => {
+  const r = (id, cloud, extra = {}) => ({ id, cloud, name: id, ...extra });
+  const local = {
+    custom: [
+      r('c1', 'u1', { name: 'old name', serves: 2 }), // saved, the database has a newer version
+      r('c2', 'u2', { dirty: 5, name: 'edited here' }), // edited here, not saved yet
+      r('c3', 'u3'), // saved, then deleted on another phone
+      r('c4', undefined), // not saved yet
+    ],
+    weeks: { '2026-11-01': ['c1', 'c4', null, null, null, null, null], '2026-11-08': ['c1', null, null, null, null, null, null] },
+  };
+  const server = {
+    recipes: [r('u1', 'u1', { name: 'new name', photos: [], photosSaved: '[]' }), r('u2', 'u2'), r('u5', 'u5', { name: 'from the other phone' })],
+    weeks: { '2026-11-01': ['u5', null, null, null, null, null, null], '2026-11-08': ['u5', 'u1', null, null, null, null, null] },
+  };
+  const m = mergeMine(local, server, '2026-11-08');
+  const byId = Object.fromEntries(m.custom.map(x => [x.id, x]));
+  assert.equal(byId.c1.name, 'new name');
+  assert.equal(byId.c1.serves, 2);
+  assert.equal(byId.c2.name, 'edited here');
+  assert.equal(byId.c3, undefined);
+  assert.ok(byId.c4);
+  assert.equal(byId.u5.name, 'from the other phone');
+  assert.deepEqual(m.weeks['2026-11-01'].slice(0, 2), ['c1', 'c4']); // uses a recipe not saved yet: kept
+  assert.deepEqual(m.weeks['2026-11-08'].slice(0, 2), ['u5', 'c1']); // database ids become this phone's ids
+  assert.deepEqual(m.plan, m.weeks['2026-11-08']);
 });

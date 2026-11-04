@@ -168,12 +168,61 @@ export async function syncPhotos(owner, recipeId, photos) {
   return paths.map(photoUrl);
 }
 
-/** Saves one of your recipes so others can see it. Returns its id in the database. */
+/**
+ * Saves one of your recipes so others can see it, and if it's a copy, records where it came from.
+ * Returns its id in the database and whether the copy was recorded.
+ */
 export async function pushRecipe(r) {
   const { data: id, error } = await supabase.rpc('create_recipe', { payload: toRow(r) });
   if (error) throw error;
   if (r.desc) await supabase.from('recipes').update({ description: r.desc.slice(0, 160) }).eq('id', id);
-  return id;
+  let noted = false;
+  if (r.copiedFrom) noted = await noteCopy(id, r.copiedFrom).then(() => true, e => { console.warn('Copy note not saved:', e?.message || e); return false; });
+  return { id, noted };
+}
+
+/**
+ * Everything of yours in the database: recipes (with photos and where copies came from)
+ * and weeks. Each recipe's id is its id in the database.
+ */
+export async function loadMine(me) {
+  const [recipes, plans] = await Promise.all([
+    supabase.from('recipes').select('*, recipe_ingredients(*), recipe_photos(*)').eq('owner_id', me).order('created_at'),
+    supabase.from('weekly_plans').select('week_start, plan_days(day, recipe_id, builtin_id)').eq('owner_id', me),
+  ]);
+  if (recipes.error) throw recipes.error;
+  if (plans.error) throw plans.error;
+  const ids = recipes.data.map(r => r.id);
+  const copies = ids.length ? await supabase.from('recipe_copies').select('copy_id, source_owner, source_recipe').in('copy_id', ids) : { data: [] };
+  if (copies.error) throw copies.error;
+  const cooks = await profilesByIds([...new Set(copies.data.map(c => c.source_owner))]);
+  const copyOf = Object.fromEntries(copies.data.map(c => [c.copy_id, c]));
+  return {
+    recipes: recipes.data.map(row => {
+      const r = fromRow(row);
+      const c = copyOf[row.id];
+      const from = c ? { copiedFrom: c.source_recipe || 'deleted', copiedFromName: cooks.find(p => p.id === c.source_owner)?.name || '', copyNoted: true } : {};
+      return { ...r, owner: undefined, photosSaved: JSON.stringify(r.photos), ...from };
+    }),
+    weeks: Object.fromEntries(plans.data.map(w => {
+      const plan = Array(7).fill(null);
+      w.plan_days.forEach(d => { plan[d.day] = d.recipe_id || d.builtin_id; });
+      return [w.week_start, plan];
+    })),
+  };
+}
+
+/**
+ * Records that one of your saved recipes is a copy of `sourceId`, so its cook (and only they)
+ * can see it was copied. Returns false if the original can't be found any more.
+ */
+export async function noteCopy(copyId, sourceId) {
+  const src = await supabase.from('recipes').select('owner_id').eq('id', sourceId).maybeSingle();
+  if (src.error) throw src.error;
+  if (!src.data?.owner_id) return false;
+  const { error } = await supabase.from('recipe_copies').insert({ copy_id: copyId, source_owner: src.data.owner_id, source_recipe: sourceId });
+  if (error && error.code !== '23505') throw error; // 23505: already noted
+  return true;
 }
 
 /** Saves changes to one of your recipes. Ingredients are replaced position by position. */
@@ -195,11 +244,14 @@ export async function deleteCloudRecipe(id) {
   if (paths.length) await supabase.storage.from(BUCKET).remove(paths);
 }
 
-export async function recipesOf(owner) {
+/** Someone's recipes. Ones they copied from `me` are marked copiedFromMe; only `me` can see that. */
+export async function recipesOf(owner, me) {
   const { data, error } = await supabase.from('recipes').select('*, recipe_ingredients(*), recipe_photos(*)')
     .eq('owner_id', owner).order('created_at', { ascending: false });
   if (error) throw error;
-  return data.map(fromRow);
+  const copies = data.length && me ? await supabase.from('recipe_copies').select('copy_id').eq('source_owner', me).in('copy_id', data.map(r => r.id)) : null;
+  const fromMe = new Set((copies?.data || []).map(c => c.copy_id));
+  return data.map(row => ({ ...fromRow(row), copiedFromMe: fromMe.has(row.id) }));
 }
 
 /* ---------- weekly plans ---------- */

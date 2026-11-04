@@ -5,7 +5,7 @@ import { useNav } from '../nav';
 import { cost, fmtQty, hasPrice, ingName, money, pick } from '../logic';
 import AddToWeekSheet from './AddToWeek';
 import { color } from '../theme';
-import { Button, Card, ConfirmDialog, Pill, Row, RoundButton, Screen, T, Tag } from '../components/ui';
+import { Button, Card, ConfirmDialog, CopiedNote, Pill, Row, RoundButton, Screen, T, Tag } from '../components/ui';
 import PhotoSlider from '../components/PhotoSlider';
 import FoodArt from '../components/FoodArt';
 
@@ -53,6 +53,7 @@ export default function RecipeDetail({ id, recipe, canCopy, back }) {
       <PhotoSlider photos={r.photos} height={220} radius={28} empty={<FoodArt height={220} />} />
       <View style={{ gap: 8 }}>
         <T v="title">{pick(r.name, lang)}</T>
+        <CopiedNote recipe={r} />
         {desc ? <T c="muted">{desc}</T> : null}
         <Row gap={6} style={{ flexWrap: 'wrap' }}>{r.tags.map(k => <Tag key={k} k={k} />)}</Row>
         <T v="caption" c="muted">{r.time} {t('min')}{hasPrice(r) ? ` · ${t('perServing', { c: money(cost(r, 4) / 4, lang) })}` : ''}</T>

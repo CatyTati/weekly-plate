@@ -211,3 +211,28 @@ export function timeAgo(hours, t) {
   return d === 1 ? t('yesterday') : t('daysAgo', { n: d });
 }
 export const firstName = user => ((user?.name || user?.email || '').trim().split(/[\s@]/)[0] || '');
+
+/* ---------- your data on this phone and in the database ---------- */
+// Supabase holds your recipes and weeks; this phone keeps a copy so the app opens fast and
+// works offline. On sign-in the database wins, except for changes made here that haven't
+// reached it yet: recipes not saved yet, edits and photos still uploading, and weeks that use them.
+export function mergeMine(local, server, thisWeek = weekKey()) {
+  const here = new Map(local.custom.filter(r => r.cloud).map(r => [r.cloud, r]));
+  const idOf = {}; // database id -> id on this phone
+  const custom = server.recipes.map(s => {
+    const l = here.get(s.cloud);
+    idOf[s.cloud] = l ? l.id : s.id;
+    if (!l) return s;
+    if (l.dirty) return l;
+    const photosWaiting = JSON.stringify(l.photos || []) !== l.photosSaved;
+    return { ...s, id: l.id, serves: l.serves, ...(photosWaiting ? { photos: l.photos, photosSaved: l.photosSaved } : {}) };
+  });
+  const waiting = local.custom.filter(r => !r.cloud); // not saved yet; recipes saved but gone were deleted elsewhere
+  const unsaved = new Set(waiting.map(r => r.id));
+  const weeks = { ...local.weeks };
+  for (const [key, plan] of Object.entries(server.weeks)) {
+    if ((local.weeks[key] || []).some(id => unsaved.has(id))) continue;
+    weeks[key] = plan.map(id => (id && idOf[id]) || id);
+  }
+  return { ...local, custom: [...custom, ...waiting], weeks, plan: weeks[thisWeek] || [] };
+}

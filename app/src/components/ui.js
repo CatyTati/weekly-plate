@@ -235,6 +235,23 @@ export function ConfirmDialog({ title, message, confirmLabel, danger, onConfirm,
   );
 }
 
+/**
+ * "Copied from …" on one of your recipes, or "Copied from you" on someone's copy of yours.
+ * Only you, and the cook it came from, ever see it.
+ */
+export function CopiedNote({ recipe }) {
+  const { t } = useStore();
+  if (!recipe?.copiedFrom && !recipe?.copiedFromMe) return null;
+  const name = recipe.copiedFromName || recipe.ownerName;
+  const text = recipe.copiedFromMe ? t('copiedFromYou') : name ? t('copiedNote', { n: name }) : t('copiedNoteAnon');
+  return (
+    <Row gap={6} style={{ alignSelf: 'flex-start', backgroundColor: color.quickSoft, borderRadius: radius.pill, paddingVertical: 4, paddingHorizontal: 10 }}>
+      <Icon name="users" c="quick" size={14} />
+      <T v="label" c="quick">{text}</T>
+    </Row>
+  );
+}
+
 export function TabBar({ tab, onTab }) {
   const { t } = useStore();
   const tabs = [['home', 'home'], ['week', 'tab_week'], ['feed', 'feed'], ['shop', 'tab_shop']];
