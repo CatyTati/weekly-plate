@@ -47,7 +47,9 @@ export default function RecipeDetail({ id, recipe, canCopy, back }) {
         <RoundButton icon="close" label={t('close')} onPress={back} />
       </Row>
     } footer={theirs ? (
-      canCopy
+      // A copy of your own recipe: you already have the original.
+      recipe.copiedFromMe ? <T v="caption" c="muted" center>{t('copyOfYours')}</T>
+      : canCopy
         ? <Button kind={copied ? 'secondary' : 'primary'} label={copied ? t('copiedRecipe') : t('copyRecipe')} onPress={() => { if (!copied) copyRecipe(recipe); }} />
         : <T v="caption" c="muted" center>{t('copyNeedsApproval')}</T>
     ) : (
