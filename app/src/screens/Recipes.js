@@ -6,17 +6,18 @@ import { color, font } from '../theme';
 import { Button, Card, CopiedNote, Field, Header, Icon, Pill, Row, RoundButton, Screen, T, Tag } from '../components/ui';
 import PhotoSlider from '../components/PhotoSlider';
 import FoodArt from '../components/FoodArt';
+import { ReactionBar, useReactions } from '../components/Reactions';
 
 const PICTURE = 200; // same as the feed
-const likeKey = r => `recipe:${r.id}`; // feed posts share state.liked
 const describe = (r, lang) => pick(r.desc, lang);
 
 /** Add button, search, filters and the recipe cards. Used by Home and the Recipes screen. */
 export function RecipeList({ open, onPick, showAdd = true }) {
-  const { state, t, recipes, toggleLike } = useStore();
+  const { state, user, t, recipes } = useStore();
   const lang = state.lang;
   const [filter, setFilter] = useState('all');
   const [q, setQ] = useState('');
+  const reactions = useReactions(onPick ? [] : recipes.map(r => r.cloud));
   // Newest first: recipes are kept in the order they were added.
   const list = [...recipes].reverse().filter(r => (filter === 'all' || r.tags.includes(filter)) && (!q || pick(r.name, lang).toLowerCase().includes(q.toLowerCase())));
   return (
@@ -48,18 +49,7 @@ export function RecipeList({ open, onPick, showAdd = true }) {
             {describe(r, lang) ? <T c="muted" numberOfLines={2}>{describe(r, lang)}</T> : null}
             <Row gap={14}>
               <Row gap={6} style={{ flex: 1, flexWrap: 'wrap' }}>{r.tags.map(k => <Tag key={k} k={k} />)}</Row>
-              <Pressable onPress={() => toggleLike(likeKey(r))} hitSlop={8} accessibilityRole="button" accessibilityState={{ selected: !!state.liked[likeKey(r)] }} accessibilityLabel={t('like')}>
-                <Row gap={6}>
-                  <Icon name="heart" c={state.liked[likeKey(r)] ? 'accent' : 'muted'} size={20} filled={!!state.liked[likeKey(r)]} />
-                  <T v="caption" c="muted">{num(state.liked[likeKey(r)] ? 1 : 0, lang)}</T>
-                </Row>
-              </Pressable>
-              <Pressable onPress={() => open('comments', { id: r.id })} hitSlop={8} accessibilityRole="button" accessibilityLabel={t('commentsTitle')}>
-                <Row gap={6}>
-                  <Icon name="chat" c="muted" size={20} />
-                  <T v="caption" c="muted">{num((state.recipeComments[r.id] || []).length, lang)}</T>
-                </Row>
-              </Pressable>
+              <ReactionBar recipeId={r.cloud} recipeName={pick(r.name, lang)} owner={user?.id} reactions={reactions.of(r.cloud)} onToggle={reactions.toggle} size={20} />
             </Row>
           </Card>
         </Pressable>

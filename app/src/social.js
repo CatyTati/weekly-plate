@@ -307,3 +307,57 @@ export async function weeksOf(owner, fromKey) {
     return { key: w.week_start, plan };
   }).filter(w => w.plan.some(Boolean));
 }
+
+/* ---------- likes and comments ---------- */
+// Anyone who can see a recipe sees who liked it and its comments.
+
+const byIdOrder = (ids, people) => ids.map(id => people.find(p => p.id === id) || { id, name: '' });
+
+/** For each recipe id: how many likes and comments, and whether `me` liked it. */
+export async function reactionsOf(ids, me) {
+  if (isDemo || !ids.length) return {};
+  const [likes, comments] = await Promise.all([
+    supabase.from('recipe_likes').select('recipe_id, user_id').in('recipe_id', ids),
+    supabase.from('recipe_comments').select('recipe_id').in('recipe_id', ids),
+  ]);
+  if (likes.error) throw likes.error;
+  if (comments.error) throw comments.error;
+  const out = Object.fromEntries(ids.map(id => [id, { likes: 0, comments: 0, liked: false }]));
+  likes.data.forEach(l => { out[l.recipe_id].likes += 1; if (l.user_id === me) out[l.recipe_id].liked = true; });
+  comments.data.forEach(c => { out[c.recipe_id].comments += 1; });
+  return out;
+}
+
+export async function setLike(recipeId, me, on) {
+  const req = on
+    ? supabase.from('recipe_likes').insert({ recipe_id: recipeId, user_id: me })
+    : supabase.from('recipe_likes').delete().eq('recipe_id', recipeId).eq('user_id', me);
+  const { error } = await req;
+  if (error && error.code !== '23505') throw error; // 23505: already liked
+}
+
+/** Who liked a recipe, newest first. */
+export async function likersOf(recipeId) {
+  const { data, error } = await supabase.from('recipe_likes').select('user_id').eq('recipe_id', recipeId).order('created_at', { ascending: false });
+  if (error) throw error;
+  const ids = data.map(l => l.user_id);
+  return byIdOrder(ids, await profilesByIds(ids));
+}
+
+/** A recipe's comments, oldest first, each with its writer's name. */
+export async function commentsOf(recipeId) {
+  const { data, error } = await supabase.from('recipe_comments').select('id, user_id, body, created_at').eq('recipe_id', recipeId).order('created_at');
+  if (error) throw error;
+  const people = await profilesByIds([...new Set(data.map(c => c.user_id))]);
+  return data.map(c => ({ id: c.id, userId: c.user_id, name: people.find(p => p.id === c.user_id)?.name || '', body: c.body, created: c.created_at }));
+}
+
+export async function addComment(recipeId, me, body) {
+  const { error } = await supabase.from('recipe_comments').insert({ recipe_id: recipeId, user_id: me, body: body.trim().slice(0, 500) });
+  if (error) throw error;
+}
+
+export async function deleteComment(id) {
+  const { error } = await supabase.from('recipe_comments').delete().eq('id', id);
+  if (error) throw error;
+}

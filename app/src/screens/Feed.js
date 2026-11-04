@@ -10,6 +10,7 @@ import { Avatar, Button, Card, CopiedNote, Header, Icon, Pill, Row, Screen, T, T
 import PhotoSlider from '../components/PhotoSlider';
 import FoodArt from '../components/FoodArt';
 import { feedOf } from '../social';
+import { ReactionBar, useReactions } from '../components/Reactions';
 import { SourceInfo } from './AddToWeek';
 
 /**
@@ -79,13 +80,11 @@ export function CopyWeekSheet({ cook, theirs, nameOf, onClose }) {
 }
 
 /** A recipe someone you follow posted: who and when, a big photo, and quick actions. */
-function Post({ r }) {
-  const { state, t, toggleLike, copyRecipe } = useStore();
+function Post({ r, reactions }) {
+  const { state, t, copyRecipe } = useStore();
   const { open } = useNav();
   const hours = r.created ? (Date.now() - new Date(r.created).getTime()) / 36e5 : 0;
   const name = r.ownerName || t('noName');
-  const likeKey = `recipe:${r.cloud}`;
-  const liked = !!state.liked[likeKey];
   const copied = state.custom.some(x => x.copiedFrom === r.cloud);
   const openRecipe = () => open('recipe', { recipe: r, canCopy: true });
   return (
@@ -110,9 +109,7 @@ function Post({ r }) {
       </Pressable>
       <View style={{ padding: 14, gap: 8 }}>
         <Row gap={12}>
-          <Pressable onPress={() => toggleLike(likeKey)} hitSlop={8} accessibilityRole="button" accessibilityState={{ selected: liked }} accessibilityLabel={t('like')}>
-            <Icon name="heart" c={liked ? 'accent' : 'ink'} size={24} filled={liked} />
-          </Pressable>
+          <ReactionBar recipeId={r.cloud} recipeName={r.name} owner={r.owner} reactions={reactions.of(r.cloud)} onToggle={reactions.toggle} size={24} />
           <View style={{ flex: 1 }} />
           {r.copiedFromMe ? <CopiedNote recipe={r} />
             : copied ? <Row gap={4}><Icon name="check" c="muted" size={14} /><T v="label" c="muted">{t('copiedRecipe')}</T></Row>
@@ -157,12 +154,13 @@ export default function Feed() {
   const [feed, setFeed] = useState(null); // { posts, cooks }
   const [failed, setFailed] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const reactions = useReactions((feed?.posts || []).map(r => r.cloud));
   const load = useCallback(() => {
     setFailed(false);
     return feedOf(user?.id).then(setFeed).catch(() => setFailed(true));
   }, [user?.id]);
   useEffect(() => { load(); }, [load]);
-  const refresh = () => { setRefreshing(true); load().finally(() => setRefreshing(false)); };
+  const refresh = () => { setRefreshing(true); reactions.reload(); load().finally(() => setRefreshing(false)); };
 
   return (
     <Screen refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={color.accent} />}>
@@ -179,7 +177,7 @@ export default function Feed() {
           </View>
         </Card>
       ) : null}
-      {(feed?.posts || []).map(r => <Post key={r.id} r={r} />)}
+      {(feed?.posts || []).map(r => <Post key={r.id} r={r} reactions={reactions} />)}
     </Screen>
   );
 }
