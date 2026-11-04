@@ -3,7 +3,7 @@
 // every row. Under that direction 'left' means the start of the line, so 'left'
 // puts Hebrew on the right and 'right' would put it on the left. TextInput doesn't
 // swap like this, so Field still asks for 'right'.
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Keyboard, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -32,6 +32,8 @@ const ICONS = {
   check: <Path d="M20 6 9 17l-5-5" />,
   plus: <Path d="M12 5v14M5 12h14" />,
   minus: <Path d="M5 12h14" />,
+  eye: <><Path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" /><Circle cx="12" cy="12" r="3" /></>,
+  eyeOff: <><Path d="M10.6 5.1A9.7 9.7 0 0 1 12 5c6.4 0 10 7 10 7a17.6 17.6 0 0 1-3.2 4.2M6.6 6.6A17.4 17.4 0 0 0 2 12s3.6 7 10 7a9.6 9.6 0 0 0 5.4-1.6" /><Path d="M3 3l18 18M9.9 9.9a3 3 0 0 0 4.2 4.2" /></>,
   trash: <Path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6" />,
   back: <Path d="m15 18-6-6 6-6" />,
   share: <Path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7M16 6l-4-4-4 4M12 2v13" />,
@@ -185,13 +187,23 @@ export function Checkbox({ checked }) {
   );
 }
 
-export function Field({ label, error, style, inputStyle, ...input }) {
-  const { rtl } = useStore();
+/** A text box with an optional label and error. A password box gets an eye button to show what was typed. */
+export function Field({ label, error, style, inputStyle, secureTextEntry, ...input }) {
+  const { rtl, t } = useStore();
+  const [shown, setShown] = useState(false);
   return (
     <View style={[{ gap: 6 }, style]}>
       {label ? <T v="label" c="muted">{label}</T> : null}
-      <TextInput placeholderTextColor={color.muted}
-        style={[s.input, { textAlign: rtl ? 'right' : 'left' }, error ? s.inputError : null, inputStyle]} {...input} />
+      <View>
+        <TextInput placeholderTextColor={color.muted} secureTextEntry={secureTextEntry && !shown}
+          style={[s.input, { textAlign: rtl ? 'right' : 'left' }, secureTextEntry ? { paddingEnd: 48 } : null, error ? s.inputError : null, inputStyle]} {...input} />
+        {secureTextEntry ? (
+          <Pressable onPress={() => setShown(v => !v)} hitSlop={8} accessibilityRole="button" accessibilityLabel={t(shown ? 'hidePass' : 'showPass')}
+            style={{ position: 'absolute', end: 4, top: 0, bottom: 0, width: 44, alignItems: 'center', justifyContent: 'center' }}>
+            <Icon name={shown ? 'eyeOff' : 'eye'} c="muted" size={20} />
+          </Pressable>
+        ) : null}
+      </View>
       {error ? <T v="caption" c="error">{error}</T> : null}
     </View>
   );
