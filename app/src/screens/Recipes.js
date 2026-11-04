@@ -58,13 +58,13 @@ export function RecipeList({ open, onPick, showAdd = true }) {
   );
 }
 
-/** Chooses a recipe for one day of a week. */
-export function PickRecipe({ week, day, back }) {
-  const { state, t, setDay } = useStore();
+/** Chooses a recipe for one day of a week. Tapping one opens it; it's added from there. */
+export function PickRecipe({ week, day, open, back }) {
+  const { state, t } = useStore();
   return (
     <Screen header={<Row style={{ justifyContent: 'flex-end' }}><RoundButton icon="close" label={t('close')} onPress={back} /></Row>}>
       <T v="display">{t('pickFor', { d: dayName(day, state.lang) })}</T>
-      <RecipeList onPick={id => { setDay(day, id, week); back(); }} />
+      <RecipeList onPick={id => open('recipe', { id, pickFor: { week, day } })} />
     </Screen>
   );
 }

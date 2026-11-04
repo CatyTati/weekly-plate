@@ -4,15 +4,16 @@ import { useStore } from '../store';
 import { useNav } from '../nav';
 import { isDemo } from '../auth';
 import { copiersOf } from '../social';
-import { cost, fmtQty, hasPrice, ingName, money, pick } from '../logic';
+import { cost, dayName, fmtQty, hasPrice, ingName, money, pick } from '../logic';
 import AddToWeekSheet from './AddToWeek';
 import { color } from '../theme';
 import { Avatar, Button, Card, ConfirmDialog, CopiedNote, Icon, Pill, Row, RoundButton, Screen, T, Tag } from '../components/ui';
 import PhotoSlider from '../components/PhotoSlider';
 import FoodArt from '../components/FoodArt';
 
-export default function RecipeDetail({ id, recipe, canCopy, back }) {
-  const { state, t, byId, deleteRecipe, copyRecipe } = useStore();
+// `pickFor` ({ week, day }) means it was opened while choosing a dinner for that day.
+export default function RecipeDetail({ id, recipe, canCopy, pickFor, back }) {
+  const { state, t, byId, deleteRecipe, copyRecipe, setDay } = useStore();
   const { open } = useNav();
   const r = recipe || byId(id); // `recipe` is someone else's, shown read-only
   const theirs = !!recipe;
@@ -38,7 +39,7 @@ export default function RecipeDetail({ id, recipe, canCopy, back }) {
   return (
     <Screen header={
       <Row style={{ justifyContent: 'space-between' }}>
-        {r.custom && !theirs ? (
+        {r.custom && !theirs && !pickFor ? (
           <Row gap={8}>
             <Pill label={t('edit')} onPress={() => open('add', { id: r.id })} />
             <Pill label={t('del')} c="error" soft="errorSoft" onPress={() => setConfirmDel(true)} />
@@ -46,7 +47,10 @@ export default function RecipeDetail({ id, recipe, canCopy, back }) {
         ) : <View />}
         <RoundButton icon="close" label={t('close')} onPress={back} />
       </Row>
-    } footer={theirs ? (
+    } footer={pickFor ? (
+      // Back past the list of recipes too, to where the day was chosen.
+      <Button icon="plus" label={t('addDo', { d: dayName(pickFor.day, lang) })} onPress={() => { setDay(pickFor.day, r.id, pickFor.week); back(); back(); }} />
+    ) : theirs ? (
       // A copy of your own recipe: you already have the original.
       recipe.copiedFromMe ? <T v="caption" c="muted" center>{t('copyOfYours')}</T>
       : canCopy
