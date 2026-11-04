@@ -4,10 +4,10 @@ import { useStore } from '../store';
 import { useNav } from '../nav';
 import { isDemo } from '../auth';
 import { copiersOf } from '../social';
-import { cost, dayName, fmtQty, hasPrice, ingName, money, pick } from '../logic';
+import { cost, dayName, fmtQty, hasPrice, ingName, money, num, pick } from '../logic';
 import AddToWeekSheet from './AddToWeek';
 import { color } from '../theme';
-import { Avatar, Button, Card, ConfirmDialog, CopiedNote, Icon, Pill, Row, RoundButton, Screen, T, Tag } from '../components/ui';
+import { Avatar, Button, Card, ConfirmDialog, CopiedNote, Icon, Pill, Row, RoundButton, Screen, Stepper, T, Tag } from '../components/ui';
 import PhotoSlider from '../components/PhotoSlider';
 import FoodArt from '../components/FoodArt';
 
@@ -23,6 +23,8 @@ export default function RecipeDetail({ id, recipe, canCopy, pickFor, back }) {
   const [confirmDel, setConfirmDel] = useState(false);
   const [copiers, setCopiers] = useState([]); // who copied this recipe of yours
   const [showCopiers, setShowCopiers] = useState(false);
+  const serves = r?.serves || 4; // how many people the recipe is written for
+  const [people, setPeople] = useState(serves); // how many you're cooking for now
   const cloud = !theirs && r?.cloud;
   useEffect(() => {
     if (!cloud || isDemo) return undefined;
@@ -33,8 +35,8 @@ export default function RecipeDetail({ id, recipe, canCopy, pickFor, back }) {
   if (!r) return null;
   const steps = (r.steps || '').split('\n').map(x => x.trim()).filter(Boolean);
   const desc = pick(r.desc, lang);
-  const serves = r.serves || 4; // amounts are kept for 4 people
-  const text = `${pick(r.name, lang)}\n` + r.ing.map(([n, q, u]) => `• ${ingName(n, lang)} – ${fmtQty(q * serves / 4, u, lang)}`).join('\n') + (steps.length ? '\n\n' + steps.join('\n') : '');
+  // Amounts are kept for 4 people and scaled to however many you choose.
+  const text = `${pick(r.name, lang)}\n` + r.ing.map(([n, q, u]) => `• ${ingName(n, lang)} – ${fmtQty(q * people / 4, u, lang)}`).join('\n') + (steps.length ? '\n\n' + steps.join('\n') : '');
 
   return (
     <Screen header={
@@ -76,12 +78,22 @@ export default function RecipeDetail({ id, recipe, canCopy, pickFor, back }) {
         <T v="caption" c="muted">{r.time} {t('min')}{hasPrice(r) ? ` · ${t('perServing', { c: money(cost(r, 4) / 4, lang) })}` : ''}</T>
       </View>
       {r.kid ? <View style={{ backgroundColor: color.kidsSoft, borderRadius: 16, padding: 12 }}><T v="caption" c="kids">{t('forKids')} {pick(r.kid, lang)}</T></View> : null}
-      <T v="heading">{t('ingFor', { n: serves })}</T>
+      <Row gap={10}>
+        <View style={{ flex: 1, gap: 2 }}>
+          <T v="heading">{t('ingFor', { n: num(people, lang) })}</T>
+          {people !== serves ? (
+            <Pressable onPress={() => setPeople(serves)} hitSlop={6} accessibilityRole="button">
+              <T v="caption" c="accent">{t('origServes', { n: num(serves, lang) })}</T>
+            </Pressable>
+          ) : null}
+        </View>
+        <Stepper value={people} onChange={setPeople} max={30} />
+      </Row>
       <Card style={{ gap: 12 }}>
         {r.ing.map(([n, q, u]) => (
           <Row key={n + u} style={{ justifyContent: 'space-between' }}>
             <T>{ingName(n, lang)}</T>
-            <T v="caption" c="muted">{fmtQty(q * serves / 4, u, lang)}</T>
+            <T v="caption" c="muted">{fmtQty(q * people / 4, u, lang)}</T>
           </Row>
         ))}
       </Card>

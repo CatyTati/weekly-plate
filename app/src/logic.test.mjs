@@ -54,6 +54,16 @@ test('quantities are rounded and translated', () => {
   assert.equal(fmtQty(130, 'גרם', 'he'), '150 גרם');
 });
 
+test('amounts written for 4 scale to any number of people', () => {
+  // What the recipe page shows: amount × people ÷ 4, then rounded to something you can measure.
+  assert.equal(fmtQty(500 * 8 / 4, 'גרם', 'he'), '1 ק״ג');
+  assert.equal(fmtQty(500 * 6 / 4, 'גרם', 'he'), '750 גרם');
+  assert.equal(fmtQty(400 * 5 / 4, 'גרם', 'he'), '500 גרם');
+  assert.equal(fmtQty(3 * 5 / 4, 'יח׳', 'he'), '4 יח׳'); // 3¾ eggs → 4
+  assert.equal(fmtQty(2 * 6 / 4, 'כף', 'he'), '3 כף');
+  assert.equal(fmtQty(1 * 5 / 4, 'כפית', 'he'), '1.5 כפית'); // 1¼ → nearest half
+});
+
 test('cost scales with servings', () => {
   const shak = R.find(r => r.id === 'Shakshuka');
   assert.ok(Math.abs(cost(shak, 8) - 2 * cost(shak, 4)) < 1e-9);
