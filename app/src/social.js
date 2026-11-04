@@ -181,6 +181,16 @@ export async function pushRecipe(r) {
   return { id, noted };
 }
 
+/** People who copied one of your recipes. Only you, the recipe's cook, can read this. */
+export async function copiersOf(recipeId) {
+  const copies = await supabase.from('recipe_copies').select('copy_id').eq('source_recipe', recipeId);
+  if (copies.error) throw copies.error;
+  if (!copies.data.length) return [];
+  const owners = await supabase.from('recipes').select('owner_id').in('id', copies.data.map(c => c.copy_id));
+  if (owners.error) throw owners.error;
+  return profilesByIds([...new Set(owners.data.map(r => r.owner_id))]);
+}
+
 /**
  * Everything of yours in the database: recipes (with photos and where copies came from)
  * and weeks. Each recipe's id is its id in the database.

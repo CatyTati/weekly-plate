@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
-import { Share, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Pressable, Share, View } from 'react-native';
 import { useStore } from '../store';
 import { useNav } from '../nav';
+import { isDemo } from '../auth';
+import { copiersOf } from '../social';
 import { cost, fmtQty, hasPrice, ingName, money, pick } from '../logic';
 import AddToWeekSheet from './AddToWeek';
 import { color } from '../theme';
-import { Button, Card, ConfirmDialog, CopiedNote, Pill, Row, RoundButton, Screen, T, Tag } from '../components/ui';
+import { Avatar, Button, Card, ConfirmDialog, CopiedNote, Icon, Pill, Row, RoundButton, Screen, T, Tag } from '../components/ui';
 import PhotoSlider from '../components/PhotoSlider';
 import FoodArt from '../components/FoodArt';
 
@@ -18,6 +20,15 @@ export default function RecipeDetail({ id, recipe, canCopy, back }) {
   const lang = state.lang;
   const [picking, setPicking] = useState(false);
   const [confirmDel, setConfirmDel] = useState(false);
+  const [copiers, setCopiers] = useState([]); // who copied this recipe of yours
+  const [showCopiers, setShowCopiers] = useState(false);
+  const cloud = !theirs && r?.cloud;
+  useEffect(() => {
+    if (!cloud || isDemo) return undefined;
+    let live = true;
+    copiersOf(cloud).then(p => { if (live) setCopiers(p); }).catch(() => {});
+    return () => { live = false; };
+  }, [cloud]);
   if (!r) return null;
   const steps = (r.steps || '').split('\n').map(x => x.trim()).filter(Boolean);
   const desc = pick(r.desc, lang);
@@ -68,6 +79,25 @@ export default function RecipeDetail({ id, recipe, canCopy, back }) {
           </Row>
         ))}
       </Card>
+      {copiers.length ? (
+        <Card style={{ gap: 4, paddingVertical: 12 }}>
+          <Pressable onPress={() => setShowCopiers(v => !v)} accessibilityRole="button" accessibilityState={{ expanded: showCopiers }} hitSlop={6}>
+            <Row gap={10}>
+              <Icon name="users" c="accent" size={18} />
+              <T v="bodyStrong" style={{ flex: 1 }}>{t('copiedByTitle')} · {copiers.length}</T>
+              <T v="label" c="muted">{showCopiers ? '▴' : '▾'}</T>
+            </Row>
+          </Pressable>
+          {showCopiers ? copiers.map(p => (
+            <Pressable key={p.id} onPress={() => open('profile', { id: p.id })} accessibilityRole="button" accessibilityLabel={p.name || t('noName')}>
+              <Row gap={10} style={{ paddingVertical: 6 }}>
+                <Avatar letter={(p.name || '?')[0]} size={32} />
+                <T style={{ flex: 1 }}>{p.name || t('noName')}</T>
+              </Row>
+            </Pressable>
+          )) : null}
+        </Card>
+      ) : null}
       {steps.length ? (
         <Card style={{ gap: 8 }}>
           <T v="heading">{t('method')}</T>
