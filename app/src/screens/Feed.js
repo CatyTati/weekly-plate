@@ -5,8 +5,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore } from '../store';
 import { useNav } from '../nav';
 import { dayName, keyToDate, num, pick, thisSunday, timeAgo, weekKey, weekRangeLabel } from '../logic';
-import { color } from '../theme';
-import { Avatar, Button, Card, CopiedNote, Header, Icon, Row, Screen, T, Tag } from '../components/ui';
+import { color, font } from '../theme';
+import { Avatar, Button, Card, CopiedNote, Header, Icon, Pill, Row, Screen, T, Tag } from '../components/ui';
 import PhotoSlider from '../components/PhotoSlider';
 import FoodArt from '../components/FoodArt';
 import { feedOf } from '../social';
@@ -78,34 +78,75 @@ export function CopyWeekSheet({ cook, theirs, nameOf, onClose }) {
   );
 }
 
+/** A recipe someone you follow posted: who and when, a big photo, and quick actions. */
 function Post({ r }) {
-  const { state, t } = useStore();
+  const { state, t, toggleLike, copyRecipe } = useStore();
   const { open } = useNav();
   const hours = r.created ? (Date.now() - new Date(r.created).getTime()) / 36e5 : 0;
   const name = r.ownerName || t('noName');
+  const likeKey = `recipe:${r.cloud}`;
+  const liked = !!state.liked[likeKey];
+  const copied = state.custom.some(x => x.copiedFrom === r.cloud);
+  const openRecipe = () => open('recipe', { recipe: r, canCopy: true });
   return (
-    <Card style={{ gap: 10 }}>
+    <Card style={{ padding: 0, gap: 0, overflow: 'hidden' }}>
       <Pressable onPress={() => open('profile', { id: r.owner })} accessibilityRole="button" accessibilityLabel={name}>
-        <Row gap={10}>
-          <Avatar letter={name[0]} size={36} />
+        <Row gap={10} style={{ padding: 12 }}>
+          <Avatar letter={name[0]} size={38} ring />
           <View style={{ flex: 1 }}>
             <T v="bodyStrong" numberOfLines={1}>{name}</T>
             {r.created ? <T v="caption" c="muted">{timeAgo(hours, t)}</T> : null}
           </View>
         </Row>
       </Pressable>
-      <Pressable onPress={() => open('recipe', { recipe: r, canCopy: true })} accessibilityRole="button" accessibilityLabel={r.name} style={{ gap: 8 }}>
-        <PhotoSlider photos={r.photos} height={200} radius={18} empty={<FoodArt height={200} radius={18} />} />
-        <T v="title" numberOfLines={2}>{r.name}</T>
-        <CopiedNote recipe={r} />
-        <Row gap={6}>
-          <Icon name="clock" c="muted" size={16} />
-          <T v="caption" c="muted">{r.time} {t('min')}</T>
-        </Row>
-        {r.desc ? <T c="muted" numberOfLines={2}>{pick(r.desc, state.lang)}</T> : null}
-        {r.tags.length ? <Row gap={6} style={{ flexWrap: 'wrap' }}>{r.tags.map(k => <Tag key={k} k={k} />)}</Row> : null}
+      <Pressable onPress={openRecipe} accessibilityRole="button" accessibilityLabel={r.name}>
+        <View>
+          <PhotoSlider photos={r.photos} height={280} radius={0} empty={<FoodArt height={280} radius={0} />} />
+          <Row gap={5} style={{ position: 'absolute', top: 12, start: 12, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 99, paddingHorizontal: 10, paddingVertical: 4 }}>
+            <Icon name="clock" c="#fff" size={13} />
+            <T v="label" c="#fff" style={{ fontFamily: font.medium }}>{r.time} {t('min')}</T>
+          </Row>
+        </View>
       </Pressable>
+      <View style={{ padding: 14, gap: 8 }}>
+        <Row gap={12}>
+          <Pressable onPress={() => toggleLike(likeKey)} hitSlop={8} accessibilityRole="button" accessibilityState={{ selected: liked }} accessibilityLabel={t('like')}>
+            <Icon name="heart" c={liked ? 'accent' : 'ink'} size={24} filled={liked} />
+          </Pressable>
+          <View style={{ flex: 1 }} />
+          {r.copiedFromMe ? <CopiedNote recipe={r} />
+            : copied ? <Row gap={4}><Icon name="check" c="muted" size={14} /><T v="label" c="muted">{t('copiedRecipe')}</T></Row>
+            : <Pill label={t('copyRecipe')} active c="onAccent" soft="accent" onPress={() => copyRecipe(r)} />}
+        </Row>
+        <Pressable onPress={openRecipe} style={{ gap: 6 }}>
+          <T v="title" numberOfLines={2}>{r.name}</T>
+          {r.desc ? <T c="muted" numberOfLines={2}>{pick(r.desc, state.lang)}</T> : null}
+          {r.tags.length ? <Row gap={6} style={{ flexWrap: 'wrap' }}>{r.tags.map(k => <Tag key={k} k={k} />)}</Row> : null}
+        </Pressable>
+      </View>
     </Card>
+  );
+}
+
+/** The people you follow, as a row of round faces. */
+function Cooks({ cooks }) {
+  const { t } = useStore();
+  const { open, go } = useNav();
+  return (
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -22 }} contentContainerStyle={{ gap: 14, paddingHorizontal: 22, paddingVertical: 2 }}>
+      {cooks.map(c => (
+        <Pressable key={c.id} onPress={() => open('profile', { id: c.id })} accessibilityRole="button" accessibilityLabel={c.name || t('noName')} style={{ alignItems: 'center', gap: 6, width: 64 }}>
+          <Avatar letter={(c.name || '?')[0]} size={54} ring />
+          <T v="label" center numberOfLines={1}>{c.name || t('noName')}</T>
+        </Pressable>
+      ))}
+      <Pressable onPress={() => go('community')} accessibilityRole="button" accessibilityLabel={t('findCooks')} style={{ alignItems: 'center', gap: 6, width: 64 }}>
+        <View style={{ width: 59, height: 59, borderRadius: 30, backgroundColor: color.accentSoft, alignItems: 'center', justifyContent: 'center' }}>
+          <Icon name="plus" c="accent" />
+        </View>
+        <T v="label" c="muted" center numberOfLines={1}>{t('moreCooks')}</T>
+      </Pressable>
+    </ScrollView>
   );
 }
 
@@ -113,12 +154,12 @@ function Post({ r }) {
 export default function Feed() {
   const { user, t } = useStore();
   const { go } = useNav();
-  const [posts, setPosts] = useState(null);
+  const [feed, setFeed] = useState(null); // { posts, cooks }
   const [failed, setFailed] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const load = useCallback(() => {
     setFailed(false);
-    return feedOf(user?.id).then(setPosts).catch(() => setFailed(true));
+    return feedOf(user?.id).then(setFeed).catch(() => setFailed(true));
   }, [user?.id]);
   useEffect(() => { load(); }, [load]);
   const refresh = () => { setRefreshing(true); load().finally(() => setRefreshing(false)); };
@@ -127,14 +168,18 @@ export default function Feed() {
     <Screen refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={color.accent} />}>
       <Header title={t('feed')} sub={t('feedSub')} />
       {failed ? <T c="error">{t('eNetwork')}</T> : null}
-      {!posts && !failed ? <ActivityIndicator color={color.accent} /> : null}
-      {posts && !posts.length ? (
-        <Card style={{ alignItems: 'center', gap: 12 }}>
-          <T c="muted" center>{t('feedEmpty')}</T>
-          <Button label={t('findCooks')} onPress={() => go('community')} />
+      {!feed && !failed ? <ActivityIndicator color={color.accent} /> : null}
+      {feed?.cooks.length ? <Cooks cooks={feed.cooks} /> : null}
+      {feed && !feed.posts.length ? (
+        <Card style={{ padding: 0, overflow: 'hidden', gap: 0 }}>
+          <FoodArt height={160} radius={0} />
+          <View style={{ padding: 18, gap: 12, alignItems: 'center' }}>
+            <T c="muted" center>{t('feedEmpty')}</T>
+            <Button label={t('findCooks')} onPress={() => go('community')} />
+          </View>
         </Card>
       ) : null}
-      {(posts || []).map(r => <Post key={r.id} r={r} />)}
+      {(feed?.posts || []).map(r => <Post key={r.id} r={r} />)}
     </Screen>
   );
 }

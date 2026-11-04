@@ -182,15 +182,15 @@ export async function pushRecipe(r) {
 }
 
 /**
- * Newest recipes from people whose follow is approved, each with its cook's name.
+ * Newest recipes from people whose follow is approved, each with its cook's name, and those people.
  * Ones copied from `me` are marked copiedFromMe; only `me` can see that.
  */
 export async function feedOf(me) {
-  if (isDemo || !me) return [];
+  if (isDemo || !me) return { posts: [], cooks: [] };
   const follows = await supabase.from('follows').select('followee_id').eq('follower_id', me).eq('status', 'approved');
   if (follows.error) throw follows.error;
   const cooks = follows.data.map(f => f.followee_id);
-  if (!cooks.length) return [];
+  if (!cooks.length) return { posts: [], cooks: [] };
   const [recipes, people] = await Promise.all([
     supabase.from('recipes').select('*, recipe_ingredients(*), recipe_photos(*)').in('owner_id', cooks)
       .order('created_at', { ascending: false }).limit(40),
@@ -202,7 +202,7 @@ export async function feedOf(me) {
     : null;
   const fromMe = new Set((copies?.data || []).map(c => c.copy_id));
   const nameOf = id => people.find(p => p.id === id)?.name || '';
-  return recipes.data.map(row => ({ ...fromRow(row), ownerName: nameOf(row.owner_id), copiedFromMe: fromMe.has(row.id) }));
+  return { posts: recipes.data.map(row => ({ ...fromRow(row), ownerName: nameOf(row.owner_id), copiedFromMe: fromMe.has(row.id) })), cooks: people };
 }
 
 /** People who copied one of your recipes. Only you, the recipe's cook, can read this. */
