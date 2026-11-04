@@ -74,7 +74,7 @@ export default function Menu({ visible, onClose, current, go, openScreen }) {
             <Item icon="shop" label={t('tab_shop')} active={current === 'shop'} onPress={nav('shop')} />
             <View style={{ height: 1, backgroundColor: color.line, marginVertical: 10 }} />
             <Item icon="users" label={t('people_title')} onPress={() => { onClose(); openScreen('people', { tab: counts?.requests ? 'requests' : 'followers' }); }}
-              extra={counts?.requests ? <View style={st.badge}><T v="label" c="kids">{t('newRequests', { n: counts.requests })}</T></View> : null} />
+              extra={counts?.requests ? <View style={st.badge}><T v="label" c="accent">{t('newRequests', { n: counts.requests })}</T></View> : null} />
             <Item icon="gear" label={t('settings')} active={current === 'settings'} onPress={nav('settings')} />
             <View style={st.item}>
               <Icon name="globe" c="muted" />
@@ -97,7 +97,7 @@ const makeStyles = () => StyleSheet.create({
   roundLeft: { borderTopLeftRadius: 28, borderBottomLeftRadius: 28 },
   roundRight: { borderTopRightRadius: 28, borderBottomRightRadius: 28 },
   item: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 14, paddingVertical: 12, borderRadius: 16 },
-  badge: { backgroundColor: color.kidsSoft, borderRadius: radius.pill, paddingHorizontal: 8, paddingVertical: 2 },
+  badge: { backgroundColor: color.accentSoft, borderRadius: radius.pill, paddingHorizontal: 8, paddingVertical: 2 },
 });
 onThemeChange(() => { st = makeStyles(); });
 

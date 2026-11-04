@@ -37,6 +37,7 @@ const ICONS = {
   trash: <Path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6" />,
   back: <Path d="m15 18-6-6 6-6" />,
   next: <Path d="m9 18 6-6-6-6" />,
+  search: <><Circle cx="11" cy="11" r="7" /><Path d="m20 20-3.5-3.5" /></>,
   more: <><Circle cx="5" cy="12" r="1.2" /><Circle cx="12" cy="12" r="1.2" /><Circle cx="19" cy="12" r="1.2" /></>,
   share: <Path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7M16 6l-4-4-4 4M12 2v13" />,
   camera: <><Path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" /><Circle cx="12" cy="13" r="4" /></>,
@@ -276,7 +277,7 @@ export function TabBar({ tab, onTab }) {
   );
 }
 
-export function Avatar({ letter, fg = 'kids', bg = 'kidsSoft', size = 44, ring }) {
+export function Avatar({ letter, fg = 'accent', bg = 'accentSoft', size = 44, ring }) {
   const inner = (
     <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: color[bg] || bg, alignItems: 'center', justifyContent: 'center' }}>
       <T v={size > 50 ? 'title' : 'heading'} c={fg} center>{(letter || '?').toUpperCase()}</T>
