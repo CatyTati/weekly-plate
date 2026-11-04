@@ -1,13 +1,15 @@
-// Feed: posts from people you follow will show here. Until then it points to the community.
-// CopyWeekSheet is also used on profiles.
-import React, { useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+// Feed: the newest recipes from people you follow. CopyWeekSheet is also used on profiles.
+import React, { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Modal, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore } from '../store';
 import { useNav } from '../nav';
-import { dayName, keyToDate, num, pick, thisSunday, weekKey, weekRangeLabel } from '../logic';
+import { dayName, keyToDate, num, pick, thisSunday, timeAgo, weekKey, weekRangeLabel } from '../logic';
 import { color } from '../theme';
-import { Button, Card, Header, Row, Screen, T } from '../components/ui';
+import { Avatar, Button, Card, CopiedNote, Header, Icon, Row, Screen, T, Tag } from '../components/ui';
+import PhotoSlider from '../components/PhotoSlider';
+import FoodArt from '../components/FoodArt';
+import { feedOf } from '../social';
 import { SourceInfo } from './AddToWeek';
 
 /**
@@ -76,16 +78,63 @@ export function CopyWeekSheet({ cook, theirs, nameOf, onClose }) {
   );
 }
 
-export default function Feed() {
-  const { t } = useStore();
-  const { go } = useNav();
+function Post({ r }) {
+  const { state, t } = useStore();
+  const { open } = useNav();
+  const hours = r.created ? (Date.now() - new Date(r.created).getTime()) / 36e5 : 0;
+  const name = r.ownerName || t('noName');
   return (
-    <Screen>
-      <Header title={t('feed')} />
-      <Card style={{ alignItems: 'center', gap: 12 }}>
-        <T c="muted" center>{t('feedEmpty')}</T>
-        <Button label={t('findCooks')} onPress={() => go('community')} />
-      </Card>
+    <Card style={{ gap: 10 }}>
+      <Pressable onPress={() => open('profile', { id: r.owner })} accessibilityRole="button" accessibilityLabel={name}>
+        <Row gap={10}>
+          <Avatar letter={name[0]} size={36} />
+          <View style={{ flex: 1 }}>
+            <T v="bodyStrong" numberOfLines={1}>{name}</T>
+            {r.created ? <T v="caption" c="muted">{timeAgo(hours, t)}</T> : null}
+          </View>
+        </Row>
+      </Pressable>
+      <Pressable onPress={() => open('recipe', { recipe: r, canCopy: true })} accessibilityRole="button" accessibilityLabel={r.name} style={{ gap: 8 }}>
+        <PhotoSlider photos={r.photos} height={200} radius={18} empty={<FoodArt height={200} radius={18} />} />
+        <T v="title" numberOfLines={2}>{r.name}</T>
+        <CopiedNote recipe={r} />
+        <Row gap={6}>
+          <Icon name="clock" c="muted" size={16} />
+          <T v="caption" c="muted">{r.time} {t('min')}</T>
+        </Row>
+        {r.desc ? <T c="muted" numberOfLines={2}>{pick(r.desc, state.lang)}</T> : null}
+        {r.tags.length ? <Row gap={6} style={{ flexWrap: 'wrap' }}>{r.tags.map(k => <Tag key={k} k={k} />)}</Row> : null}
+      </Pressable>
+    </Card>
+  );
+}
+
+/** Newest recipes from people you follow. Pull down to load again. */
+export default function Feed() {
+  const { user, t } = useStore();
+  const { go } = useNav();
+  const [posts, setPosts] = useState(null);
+  const [failed, setFailed] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const load = useCallback(() => {
+    setFailed(false);
+    return feedOf(user?.id).then(setPosts).catch(() => setFailed(true));
+  }, [user?.id]);
+  useEffect(() => { load(); }, [load]);
+  const refresh = () => { setRefreshing(true); load().finally(() => setRefreshing(false)); };
+
+  return (
+    <Screen refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={color.accent} />}>
+      <Header title={t('feed')} sub={t('feedSub')} />
+      {failed ? <T c="error">{t('eNetwork')}</T> : null}
+      {!posts && !failed ? <ActivityIndicator color={color.accent} /> : null}
+      {posts && !posts.length ? (
+        <Card style={{ alignItems: 'center', gap: 12 }}>
+          <T c="muted" center>{t('feedEmpty')}</T>
+          <Button label={t('findCooks')} onPress={() => go('community')} />
+        </Card>
+      ) : null}
+      {(posts || []).map(r => <Post key={r.id} r={r} />)}
     </Screen>
   );
 }

@@ -117,7 +117,7 @@ const toRow = r => ({
 });
 
 const fromRow = row => ({
-  id: row.id, cloud: row.id, owner: row.owner_id, custom: true,
+  id: row.id, cloud: row.id, owner: row.owner_id, custom: true, created: row.created_at,
   name: row.name, time: row.prep_minutes, m: row.cook_method, tags: row.tags,
   kid: row.kid_note || undefined, keep: row.keeps_days || 0, steps: row.method, desc: row.description || '',
   ing: [...(row.recipe_ingredients || [])].sort((a, b) => a.position - b.position)
@@ -179,6 +179,30 @@ export async function pushRecipe(r) {
   let noted = false;
   if (r.copiedFrom) noted = await noteCopy(id, r.copiedFrom).then(() => true, e => { console.warn('Copy note not saved:', e?.message || e); return false; });
   return { id, noted };
+}
+
+/**
+ * Newest recipes from people whose follow is approved, each with its cook's name.
+ * Ones copied from `me` are marked copiedFromMe; only `me` can see that.
+ */
+export async function feedOf(me) {
+  if (isDemo || !me) return [];
+  const follows = await supabase.from('follows').select('followee_id').eq('follower_id', me).eq('status', 'approved');
+  if (follows.error) throw follows.error;
+  const cooks = follows.data.map(f => f.followee_id);
+  if (!cooks.length) return [];
+  const [recipes, people] = await Promise.all([
+    supabase.from('recipes').select('*, recipe_ingredients(*), recipe_photos(*)').in('owner_id', cooks)
+      .order('created_at', { ascending: false }).limit(40),
+    profilesByIds(cooks),
+  ]);
+  if (recipes.error) throw recipes.error;
+  const copies = recipes.data.length
+    ? await supabase.from('recipe_copies').select('copy_id').eq('source_owner', me).in('copy_id', recipes.data.map(r => r.id))
+    : null;
+  const fromMe = new Set((copies?.data || []).map(c => c.copy_id));
+  const nameOf = id => people.find(p => p.id === id)?.name || '';
+  return recipes.data.map(row => ({ ...fromRow(row), ownerName: nameOf(row.owner_id), copiedFromMe: fromMe.has(row.id) }));
 }
 
 /** People who copied one of your recipes. Only you, the recipe's cook, can read this. */

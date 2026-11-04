@@ -67,7 +67,7 @@ export function Icon({ name, c = 'ink', size = 22, w = 1.9, flip }) {
   );
 }
 
-export function Screen({ children, scroll = true, header, footer, scrollRef }) {
+export function Screen({ children, scroll = true, header, footer, scrollRef, refreshControl }) {
   const Body = scroll ? ScrollView : View;
   const own = useRef(null);
   const ref = scrollRef || own;
@@ -99,7 +99,7 @@ export function Screen({ children, scroll = true, header, footer, scrollRef }) {
         <SafeAreaView edges={['top']} style={{ flex: 1 }}>
           {header ? <View style={s.header}>{header}</View> : null}
           <Body ref={scroll ? ref : undefined} style={{ flex: 1 }} contentContainerStyle={scroll ? s.content : undefined}
-            keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive"
+            keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive" refreshControl={scroll ? refreshControl : undefined}
             onScroll={scroll ? e => { offset.current = e.nativeEvent.contentOffset.y; } : undefined} scrollEventThrottle={16}>
             {scroll ? children : <View style={[s.content, { flex: 1 }]}>{children}</View>}
           </Body>
