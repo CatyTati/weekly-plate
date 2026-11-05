@@ -38,6 +38,7 @@ const ICONS = {
   back: <Path d="m15 18-6-6 6-6" />,
   next: <Path d="m9 18 6-6-6-6" />,
   down: <Path d="m6 9 6 6 6-6" />,
+  pencil: <Path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4zM13.5 6.5l4 4" />,
   userCheck: <><Circle cx="9" cy="7" r="4" /><Path d="M2 21v-2a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v2M16 11l2 2 4-4" /></>,
   lock: <><Rect x="5" y="11" width="14" height="10" rx="2" /><Path d="M8 11V7a4 4 0 0 1 8 0v4" /></>,
   search: <><Circle cx="11" cy="11" r="7" /><Path d="m20 20-3.5-3.5" /></>,

@@ -43,8 +43,15 @@ function FoodRow({ food, adder, actions, onEdit }) {
         </Row>
       ) : null}
       {onEdit ? (
-        <Pressable onPress={onEdit} accessibilityRole="button" hitSlop={6} style={{ alignSelf: 'flex-start' }}>
-          <T v="label" c="accent" style={{ fontFamily: font.medium }}>{t('edit')}</T>
+        <Pressable onPress={onEdit} accessibilityRole="button" accessibilityLabel={`${t('edit')}: ${foodName(food, lang)}`}
+          style={({ pressed }) => ({ alignSelf: 'flex-start', marginTop: 4, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 8,
+            borderRadius: 99, borderWidth: 1.5, borderColor: color.accent, backgroundColor: pressed ? color.accent : color.accentSoft })}>
+          {({ pressed }) => (
+            <>
+              <Icon name="pencil" c={pressed ? 'onAccent' : 'accent'} size={15} />
+              <T v="label" c={pressed ? 'onAccent' : 'accent'} style={{ fontFamily: font.medium }}>{t('edit')}</T>
+            </>
+          )}
         </Pressable>
       ) : null}
       {actions}
