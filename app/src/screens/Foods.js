@@ -3,11 +3,12 @@
 import React, { useEffect, useState } from 'react';
 import { Pressable, RefreshControl, View } from 'react-native';
 import { useStore } from '../store';
-import { aisleName, num } from '../logic';
+import { AISLE_ORDER, aisleName, num } from '../logic';
 import { foodName, normalize } from '../nutrition';
 import { addersOf, deleteFood, loadFoods, reviewFood, useFoods } from '../foods';
 import { color, font } from '../theme';
 import { Card, Field, Icon, Pill, Row, RoundButton, Screen, T } from '../components/ui';
+import { AddFoodSheet } from '../components/FoodPicker';
 
 /** One food: its names, nutrition per 100 g, and (while waiting) who added it and what to do. */
 function FoodRow({ food, adder, actions }) {
@@ -54,6 +55,8 @@ export default function Foods({ back }) {
   const [adders, setAdders] = useState({});
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
+  const [open, setOpen] = useState({});
+  const [adding, setAdding] = useState(false);
 
   useEffect(() => { loadFoods(me, true).catch(() => setError(t('eNetwork'))); }, [me]);
   const waiting = foods.filter(f => f.status !== 'approved' && (admin ? f.status === 'pending' : f.created_by === me));
@@ -77,7 +80,9 @@ export default function Foods({ back }) {
           <T v="heading">{t('foodsTitle')}</T>
           <T v="caption" c="muted">{t('foodsSub')}</T>
         </View>
+        {admin ? <RoundButton icon="plus" label={t('addFoodBtn')} onPress={() => setAdding(true)} /> : null}
       </Row>
+      {adding ? <AddFoodSheet name="" onClose={() => setAdding(false)} onAdded={() => setAdding(false)} /> : null}
       <Row gap={6}>
         <Pill label={`${t('tabApproved')} · ${num(approvedCount, lang)}`} active={tab === 'approved'} onPress={() => setTab('approved')} />
         <Pill label={`${t(admin ? 'tabPending' : 'tabMine')} · ${num(waiting.length, lang)}`} active={tab === 'waiting'} onPress={() => setTab('waiting')} />
@@ -90,7 +95,24 @@ export default function Foods({ back }) {
       </View>
       {error ? <T c="error">{error}</T> : null}
       {!shown.length ? <T c="muted" center>{tab === 'approved' || q ? t('noFoods') : t(admin ? 'noPending' : 'noMine')}</T> : null}
-      {shown.map(food => (
+      {tab === 'approved' ? AISLE_ORDER.map(aisle => {
+        const list = shown.filter(f => f.aisle === aisle);
+        if (!list.length) return null;
+        const expanded = !!n || open[aisle];
+        return (
+          <View key={aisle} style={{ gap: 8 }}>
+            <Pressable onPress={() => setOpen(o => ({ ...o, [aisle]: !o[aisle] }))} accessibilityRole="button" accessibilityState={{ expanded }}
+              style={({ pressed }) => ({ backgroundColor: color.surface, borderRadius: 14, borderWidth: 1, borderColor: color.edge, paddingHorizontal: 16, paddingVertical: 14, opacity: pressed ? 0.85 : 1 })}>
+              <Row gap={10}>
+                <T v="bodyStrong" style={{ flex: 1 }}>{aisleName(aisle, lang)}</T>
+                <T v="label" c="muted">{num(list.length, lang)}</T>
+                <View style={{ transform: [{ rotate: expanded ? '180deg' : '0deg' }] }}><Icon name="down" c="muted" size={18} /></View>
+              </Row>
+            </Pressable>
+            {expanded ? list.map(food => <FoodRow key={food.id} food={food} />) : null}
+          </View>
+        );
+      }) : shown.map(food => (
         <FoodRow key={food.id} food={food} adder={adders[food.created_by]} actions={
           food.status === 'approved' ? null : admin ? (
             <Row gap={8} style={{ marginTop: 4 }}>

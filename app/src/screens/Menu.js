@@ -7,6 +7,7 @@ import { firstName } from '../logic';
 import { LanguageSwitch } from './Onboarding';
 import { isDemo } from '../auth';
 import { myConnections } from '../social';
+import { useFoods } from '../foods';
 import { color, onThemeChange, radius } from '../theme';
 import { Avatar, Icon, RoundButton, Row, T } from '../components/ui';
 
@@ -23,6 +24,7 @@ function Item({ icon, label, active, danger, onPress, extra }) {
 
 export default function Menu({ visible, onClose, current, go, openScreen }) {
   const { state, user, t, rtl, logout } = useStore();
+  const { admin } = useFoods();
   const { width } = useWindowDimensions();
   const w = Math.min(320, width * 0.82);
   const x = useRef(new Animated.Value(0)).current;
@@ -75,7 +77,7 @@ export default function Menu({ visible, onClose, current, go, openScreen }) {
             <View style={{ height: 1, backgroundColor: color.line, marginVertical: 10 }} />
             <Item icon="users" label={t('people_title')} onPress={() => { onClose(); openScreen('people', { tab: counts?.requests ? 'requests' : 'followers' }); }}
               extra={counts?.requests ? <View style={st.badge}><T v="label" c="accent">{t('newRequests', { n: counts.requests })}</T></View> : null} />
-            <Item icon="book" label={t('foodsTitle')} onPress={() => { onClose(); openScreen('foods'); }} />
+            {admin ? <Item icon="book" label={t('foodsTitle')} onPress={() => { onClose(); openScreen('foods'); }} /> : null}
             <Item icon="gear" label={t('settings')} active={current === 'settings'} onPress={nav('settings')} />
             <View style={st.item}>
               <Icon name="globe" c="muted" />

@@ -53,14 +53,18 @@ export async function ensureFoods(ids) {
   if (!error) put(data.map(fromRow));
 }
 
-/** Suggests a new food. It's yours to use right away and waits for an admin before others see it. */
+/**
+ * Suggests a new food. It's yours to use right away and waits for an admin before others see it.
+ * An admin's own food goes straight into the database.
+ */
 export async function suggestFood(me, food) {
   const row = { names: food.names, aisle: food.aisle, kcal: food.kcal, protein: food.protein, carbs: food.carbs, fat: food.fat,
     piece_g: food.piece_g, density: food.density, created_by: me, status: 'pending' };
   const { data, error } = await supabase.from('foods').insert(row).select(COLUMNS).single();
   if (error) throw error;
-  const f = fromRow(data);
+  let f = fromRow(data);
   put([f]);
+  if (admin) f = await reviewFood(f.id, 'approved');
   return f;
 }
 
@@ -68,7 +72,9 @@ export async function suggestFood(me, food) {
 export async function reviewFood(id, status) {
   const { data, error } = await supabase.from('foods').update({ status, reviewed_at: new Date().toISOString() }).eq('id', id).select(COLUMNS).single();
   if (error) throw error;
-  put([fromRow(data)]);
+  const f = fromRow(data);
+  put([f]);
+  return f;
 }
 
 /** Deletes a food: admins any, others only their own that wasn't approved. */

@@ -99,6 +99,7 @@ const optional = v => (String(v).trim() === '' ? null : Number(v));
 export function AddFoodSheet({ name, onClose, onAdded }) {
   const { state, user, t, rtl } = useStore();
   const insets = useSafeAreaInsets();
+  const { admin } = useFoods();
   const lang = state.lang;
   const [f, setF] = useState({ name, aisle: 'pantry', kcal: '', protein: '', carbs: '', fat: '', piece: '' });
   const [error, setError] = useState('');
@@ -129,7 +130,7 @@ export function AddFoodSheet({ name, onClose, onAdded }) {
         <View style={{ backgroundColor: color.bg, borderTopLeftRadius: 28, borderTopRightRadius: 28, maxHeight: '90%' }}>
           <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 22, paddingBottom: 22 + insets.bottom, gap: 14 }}>
             <T v="title">{t('newFoodTitle')}</T>
-            <T v="caption" c="muted">{t('newFoodHint')}</T>
+            <T v="caption" c="muted">{t(admin ? 'newFoodHintAdmin' : 'newFoodHint')}</T>
             <Field label={t('fFoodName')} value={f.name} maxLength={40} onChangeText={v => set({ name: v })} />
             <View style={{ gap: 8 }}>
               <T v="label" c="muted">{t('fAisle')}</T>
