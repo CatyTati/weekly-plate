@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { normalize, indexFoods, matchFood, didYouMean, suggestFoods, gramsOf, nutritionOf, looksTooMuch, foodName } from './nutrition.js';
+import { normalize, indexFoods, exactFood, matchFood, didYouMean, suggestFoods, gramsOf, nutritionOf, looksTooMuch, foodName } from './nutrition.js';
 
 // The starter foods, read from the same SQL that fills the database.
 const sql = readFileSync(new URL('../../backend/supabase/migrations/20261105010000_foods_seed.sql', import.meta.url), 'utf8');
@@ -29,6 +29,14 @@ test('names match in any language, plural, with extra words', () => {
   assert.equal(en('שמן זית כתית'), 'olive oil');
   assert.equal(en('olives'), 'olives');
   assert.equal(matchFood('רוטב סודי של סבתא', index), null);
+});
+
+test('a name already in the database is found exactly, a longer one is not', () => {
+  assert.equal(exactFood('בצל', index)?.names.en[0], 'onion');
+  assert.equal(exactFood('ביצים', index)?.names.en[0], 'egg');
+  assert.equal(exactFood('Onions', index)?.names.en[0], 'onion');
+  assert.equal(exactFood('בצל מטוגן', index), null);
+  assert.equal(exactFood('בצ', index), null);
 });
 
 test('typos get a suggestion, unrelated words do not', () => {

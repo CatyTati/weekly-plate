@@ -45,12 +45,18 @@ export function indexFoods(foods) {
   return { foods, byKey, phrases };
 }
 
+/** The food named exactly this (ignoring plurals and "ה"), or null. */
+export function exactFood(name, index) {
+  const w = words(name);
+  return (w.length && index.byKey.get(w.join(' '))) || null;
+}
+
 /** The food an ingredient name means, or null. "2 שיני שום כתושות" finds garlic. */
 export function matchFood(name, index) {
+  const exact = exactFood(name, index);
+  if (exact) return exact;
   const w = words(name);
   if (!w.length) return null;
-  const exact = index.byKey.get(w.join(' '));
-  if (exact) return exact;
   for (const { w: p, food } of index.phrases) {
     for (let i = 0; i + p.length <= w.length; i++) {
       if (p.every((x, j) => w[i + j] === x)) return food;

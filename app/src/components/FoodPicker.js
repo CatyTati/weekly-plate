@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore } from '../store';
 import { isDemo } from '../auth';
 import { AISLE_ORDER, U, aisleName, num } from '../logic';
-import { didYouMean, foodName, matchFood, normalize, suggestFoods } from '../nutrition';
+import { didYouMean, exactFood, foodName, matchFood, normalize, suggestFoods } from '../nutrition';
 import { suggestFood, useFoods } from '../foods';
 import { color, font, shadow } from '../theme';
 import { Button, Field, Icon, Pill, Row, T } from './ui';
@@ -60,7 +60,7 @@ export function FoodHint({ row, focused, onLink }) {
             </Row>
           </Pressable>
         ))}
-        {isDemo ? null : (
+        {isDemo || exactFood(text, index) ? null : (
           <Pressable onPress={() => { Keyboard.dismiss(); setAdding(true); }} accessibilityRole="button"
             style={({ pressed }) => ({ paddingHorizontal: 14, paddingVertical: 10, backgroundColor: pressed ? color.surface : 'transparent' })}>
             <Row gap={8}><Icon name="plus" c="accent" size={16} /><T c="accent" style={{ flex: 1, fontFamily: font.medium }} numberOfLines={1}>{t('addNewFood', { n: text })}</T></Row>
