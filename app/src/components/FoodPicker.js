@@ -42,16 +42,17 @@ export function FoodHint({ row, focused, onLink }) {
   if (focused) {
     const list = suggestFoods(text, index, lang, 4);
     return (
-      <View style={{ backgroundColor: color.surface, borderRadius: 14, borderWidth: 1.5, borderColor: color.accent, overflow: 'hidden', ...shadow }}>
+      <View style={{ borderRadius: 14, backgroundColor: color.accentSoft, ...shadow }}>
+      <View style={{ backgroundColor: color.accentSoft, borderRadius: 14, borderWidth: 1.5, borderColor: color.accent, overflow: 'hidden' }}>
         {list.length ? (
-          <Row gap={6} style={{ backgroundColor: color.accentSoft, paddingHorizontal: 14, paddingVertical: 7 }}>
-            <Icon name="search" c="accent" size={14} />
-            <T v="label" c="accent" style={{ fontFamily: font.medium }}>{t('foodSuggestions')}</T>
+          <Row gap={6} style={{ backgroundColor: color.accent, paddingHorizontal: 14, paddingVertical: 7 }}>
+            <Icon name="search" c="onAccent" size={14} />
+            <T v="label" c="onAccent" style={{ fontFamily: font.medium }}>{t('foodSuggestions')}</T>
           </Row>
         ) : null}
         {list.map(food => (
           <Pressable key={food.id} onPress={() => pick(food)} accessibilityRole="button"
-            style={({ pressed }) => ({ paddingHorizontal: 14, paddingVertical: 12, backgroundColor: pressed ? color.accentSoft : 'transparent', borderBottomWidth: 1, borderColor: color.line })}>
+            style={({ pressed }) => ({ paddingHorizontal: 14, paddingVertical: 12, backgroundColor: pressed ? color.surface : 'transparent', borderBottomWidth: 1, borderColor: color.surface })}>
             <Row gap={8}>
               <Icon name="plus" c="accent" size={14} />
               <T v="bodyStrong" style={{ flex: 1 }} numberOfLines={1}>{foodName(food, lang)}</T>
@@ -61,11 +62,12 @@ export function FoodHint({ row, focused, onLink }) {
         ))}
         {isDemo ? null : (
           <Pressable onPress={() => { Keyboard.dismiss(); setAdding(true); }} accessibilityRole="button"
-            style={({ pressed }) => ({ paddingHorizontal: 14, paddingVertical: 10, backgroundColor: pressed ? color.accentSoft : 'transparent' })}>
+            style={({ pressed }) => ({ paddingHorizontal: 14, paddingVertical: 10, backgroundColor: pressed ? color.surface : 'transparent' })}>
             <Row gap={8}><Icon name="plus" c="accent" size={16} /><T c="accent" style={{ flex: 1, fontFamily: font.medium }} numberOfLines={1}>{t('addNewFood', { n: text })}</T></Row>
           </Pressable>
         )}
         {sheet}
+      </View>
       </View>
     );
   }
