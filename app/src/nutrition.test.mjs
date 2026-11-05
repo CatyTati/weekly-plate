@@ -4,7 +4,8 @@ import { readFileSync } from 'node:fs';
 import { normalize, indexFoods, exactFood, nameStartsWith, matchFood, didYouMean, suggestFoods, gramsOf, nutritionOf, looksTooMuch, foodName } from './nutrition.js';
 
 // The starter foods, read from the same SQL that fills the database.
-const sql = readFileSync(new URL('../../backend/supabase/migrations/20261105010000_foods_seed.sql', import.meta.url), 'utf8');
+const seed = f => readFileSync(new URL(`../../backend/supabase/migrations/${f}`, import.meta.url), 'utf8');
+const sql = seed('20261105010000_foods_seed.sql') + seed('20261105020000_foods_seed_more.sql');
 const num = v => (v === 'null' ? null : Number(v));
 const foods = [...sql.matchAll(/^\s*\('(.+?)'::jsonb, '(\w+)', ([\d.]+), ([\d.]+), ([\d.]+), ([\d.]+), ([\d.]+|null), ([\d.]+|null)\)/gm)]
   .map((m, i) => ({ id: 'f' + i, names: JSON.parse(m[1].replace(/''/g, "'")), aisle: m[2], kcal: num(m[3]), protein: num(m[4]), carbs: num(m[5]), fat: num(m[6]), piece_g: num(m[7]), density: num(m[8]) }));
@@ -12,7 +13,25 @@ const index = indexFoods(foods);
 const en = name => foodName(matchFood(name, index), 'en');
 
 test('every starter food is read from the seed', () => {
-  assert.equal(foods.length, 148);
+  assert.equal(foods.length, 245);
+});
+
+test('no name belongs to two foods', () => {
+  const seen = new Map();
+  for (const f of foods) for (const name of Object.values(f.names).flat()) {
+    const key = normalize(name);
+    assert.ok(!seen.has(key) || seen.get(key) === f.id, `${name} is used twice`);
+    seen.set(key, f.id);
+  }
+});
+
+test('longer names win over the foods inside them', () => {
+  assert.equal(en('1 כפית אבקת שום'), 'garlic powder');
+  assert.equal(en('חלב מרוכז'), 'condensed milk');
+  assert.equal(en('חומוס בקופסה'), 'canned chickpeas');
+  assert.equal(en('חומוס'), 'hummus');
+  assert.equal(en('гречка'), 'buckwheat');
+  assert.equal(en('צ׳ילי גרוס'), 'chili flakes');
 });
 
 test('names match in any language, plural, with extra words', () => {
@@ -50,7 +69,8 @@ test('search matches the start of a word, not the middle', () => {
 test('typos get a suggestion, unrelated words do not', () => {
   assert.equal(foodName(didYouMean('בצעל', index), 'en'), 'onion');
   assert.equal(foodName(didYouMean('onoin', index), 'en'), 'onion');
-  assert.equal(didYouMean('זעתר', index), null);
+  assert.equal(didYouMean('מטוטלת', index), null);
+  assert.equal(foodName(didYouMean('זעטר', index), 'en'), "za'atar");
 });
 
 test('suggestions while typing come in your language first', () => {
