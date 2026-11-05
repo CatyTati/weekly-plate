@@ -113,7 +113,7 @@ export async function removeFollower(me, id) {
 const toRow = r => ({
   name: r.name, prep_minutes: r.time, method: r.steps, tags: r.tags,
   kid_note: r.kid || null, keeps_days: r.keep || null, cook_method: r.m || 'stove', is_public: true,
-  ingredients: r.ing.map(([name, qty, unit, aisle]) => ({ name, qty, unit: UNIT_CODE[unit] || 'pcs', aisle })),
+  ingredients: r.ing.map(([name, qty, unit, aisle, , food]) => ({ name, qty, unit: UNIT_CODE[unit] || 'pcs', aisle, food_id: food || null })),
 });
 
 const fromRow = row => ({
@@ -121,7 +121,7 @@ const fromRow = row => ({
   name: row.name, time: row.prep_minutes, m: row.cook_method, tags: row.tags,
   kid: row.kid_note || undefined, keep: row.keeps_days || 0, steps: row.method, desc: row.description || '',
   ing: [...(row.recipe_ingredients || [])].sort((a, b) => a.position - b.position)
-    .map(i => [i.name, Number(i.qty), UNIT_FROM_CODE[i.unit] || i.unit, i.aisle, 0]),
+    .map(i => [i.name, Number(i.qty), UNIT_FROM_CODE[i.unit] || i.unit, i.aisle, 0, i.food_id || null]),
   photos: [...(row.recipe_photos || [])].sort((a, b) => a.position - b.position).map(p => photoUrl(p.storage_path)),
 });
 

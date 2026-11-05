@@ -216,7 +216,7 @@ export function Field({ label, error, style, inputStyle, secureTextEntry, ...inp
 }
 
 /** A centered "are you sure?" box. `danger` makes the confirm button red. */
-export function ConfirmDialog({ title, message, confirmLabel, danger, onConfirm, onCancel }) {
+export function ConfirmDialog({ title, message, confirmLabel, cancelLabel, danger, onConfirm, onCancel }) {
   const { t, rtl } = useStore();
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onCancel}>
@@ -232,7 +232,7 @@ export function ConfirmDialog({ title, message, confirmLabel, danger, onConfirm,
             </Pressable>
             <Pressable accessibilityRole="button" onPress={onCancel}
               style={({ pressed }) => [s.btn, { backgroundColor: color.bg, opacity: pressed ? 0.85 : 1 }]}>
-              <T v="bodyStrong" c="muted" center>{t('cancel')}</T>
+              <T v="bodyStrong" c="muted" center>{cancelLabel || t('cancel')}</T>
             </Pressable>
           </View>
         </View>

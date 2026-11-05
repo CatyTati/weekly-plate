@@ -10,6 +10,45 @@ import { color } from '../theme';
 import { Avatar, Button, Card, ConfirmDialog, CopiedNote, Icon, Pill, Row, RoundButton, Screen, Stepper, T, Tag } from '../components/ui';
 import PhotoSlider from '../components/PhotoSlider';
 import FoodArt from '../components/FoodArt';
+import { ensureFoods, useFoods } from '../foods';
+import { nutritionOf } from '../nutrition';
+
+/** Calories, protein, carbs and fat for one serving, and which ingredients weren't counted. */
+function Nutrition({ recipe }) {
+  const { state, t } = useStore();
+  const { foods, forRow } = useFoods();
+  const ids = recipe.ing.map(i => i[5]).filter(Boolean).join(',');
+  useEffect(() => { if (ids) ensureFoods(ids.split(',')).catch(() => {}); }, [ids]);
+  if (!foods.length) return null; // not loaded, or demo mode
+  const lang = state.lang;
+  const n = nutritionOf(recipe, forRow);
+  const g = v => `${num(Math.round(v), lang)} ${t('gramsShort')}`;
+  const stat = (label, value) => (
+    <View style={{ flex: 1, alignItems: 'center', gap: 2, backgroundColor: color.bg, borderRadius: 14, paddingVertical: 10 }}>
+      <T v="bodyStrong">{value}</T>
+      <T v="label" c="muted">{label}</T>
+    </View>
+  );
+  return (
+    <Card style={{ gap: 12 }}>
+      <T v="heading">{t('nutritionTitle')}</T>
+      {n.counted ? (
+        <>
+          <Row gap={8} style={{ alignItems: 'baseline' }}>
+            <T v="display" c="accent">≈ {num(Math.round(n.kcal), lang)}</T>
+            <T c="muted">{t('kcalLabel')}</T>
+          </Row>
+          <Row gap={8}>
+            {stat(t('proteinLabel'), g(n.protein))}
+            {stat(t('carbsLabel'), g(n.carbs))}
+            {stat(t('fatLabel'), g(n.fat))}
+          </Row>
+        </>
+      ) : <T c="muted">{t('nutritionNone')}</T>}
+      {n.counted && n.missing.length ? <T v="caption" c="muted">{t('notCounted', { n: n.missing.join(', ') })}</T> : null}
+    </Card>
+  );
+}
 
 // `pickFor` ({ week, day }) means it was opened while choosing a dinner for that day.
 export default function RecipeDetail({ id, recipe, canCopy, pickFor, back }) {
@@ -97,6 +136,7 @@ export default function RecipeDetail({ id, recipe, canCopy, pickFor, back }) {
           </Row>
         ))}
       </Card>
+      <Nutrition recipe={r} />
       {copiers.length ? (
         <Card style={{ gap: 4, paddingVertical: 12 }}>
           <Pressable onPress={() => setShowCopiers(v => !v)} accessibilityRole="button" accessibilityState={{ expanded: showCopiers }} hitSlop={6}>

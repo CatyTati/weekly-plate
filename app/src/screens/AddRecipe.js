@@ -2,11 +2,14 @@ import React, { useRef, useState } from 'react';
 import { Image, Pressable, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useStore } from '../store';
-import { LIMITS, TAG_KEYS, U, UNITS, unitName, validateRecipe } from '../logic';
+import { LIMITS, TAG_KEYS, U, UNITS, fmtQty, unitName, validateRecipe } from '../logic';
+import { foodName, gramsOf, looksTooMuch, matchFood } from '../nutrition';
+import { useFoods } from '../foods';
+import { FoodHint, linkRow } from '../components/FoodPicker';
 import { color, font } from '../theme';
-import { Button, Card, Field, Icon, Pill, Row, RoundButton, Screen, Stepper, T } from '../components/ui';
+import { Button, Card, ConfirmDialog, Field, Icon, Pill, Row, RoundButton, Screen, Stepper, T } from '../components/ui';
 
-const blank = () => ({ n: '', q: '', u: U, a: 'veg' });
+const blank = () => ({ n: '', q: '', u: U, a: 'pantry', f: null }); // f: the food it's linked to
 const empty = () => ({ name: '', desc: '', time: '30', serves: 4, steps: '', kid: '', tags: {}, ing: [blank(), blank(), blank()], photos: [] });
 // The app keeps amounts for 4 people; the form shows them for the recipe's own number.
 const round = q => String(Math.round(q * 100) / 100);
@@ -16,7 +19,7 @@ const toForm = r => {
   return {
     name: r.name, desc: r.desc || '', time: String(r.time), serves, steps: r.steps || '', kid: r.kid || '',
     tags: Object.fromEntries(r.tags.map(k => [k, true])), photos: r.photos || [],
-    ing: r.ing.map(([n, q, u, a]) => ({ n, q: round(q * serves / 4), u, a: a || 'veg' })),
+    ing: r.ing.map(([n, q, u, a, , f]) => ({ n, q: round(q * serves / 4), u, a: a || 'pantry', f: f || null })),
   };
 };
 
@@ -61,6 +64,9 @@ export default function AddRecipe({ id, back }) {
   const [errors, setErrors] = useState({});
   const [photoError, setPhotoError] = useState('');
   const [tried, setTried] = useState(false);
+  const [focused, setFocused] = useState(-1); // which ingredient name is being typed
+  const [tooMuch, setTooMuch] = useState(null); // { q, n } when an amount looks like a typo
+  const { index, byId: foodById } = useFoods();
   const scroll = useRef(null);
   const picking = useRef(false); // a second tap while the picker opens would stack another picker
 
@@ -93,10 +99,28 @@ export default function AddRecipe({ id, back }) {
     setPhotoError(errs.join(' '));
   }
 
-  function save() {
+  // Rows typed without picking a suggestion are linked to the food their name matches.
+  const linked = rows => rows.map(r => {
+    if (r.f || !r.n.trim()) return r;
+    const food = matchFood(r.n, index);
+    return food ? { ...r, f: food.id, a: food.aisle } : r;
+  });
+
+  function save(anyway) {
     setTried(true);
-    const res = validateRecipe(form, editing ? recipes.filter(r => r.id !== id) : recipes, t);
+    const checked = { ...form, ing: linked(form.ing) };
+    const res = validateRecipe(checked, editing ? recipes.filter(r => r.id !== id) : recipes, t);
     setErrors(res.errors);
+    if (res.value && !anyway) {
+      for (const r of checked.ing) {
+        const food = r.f && foodById.get(r.f);
+        const g = food && Number(r.q) > 0 ? gramsOf(Number(r.q), r.u, food) : null;
+        if (g != null && looksTooMuch(food, g / form.serves)) {
+          setTooMuch({ q: fmtQty(Number(r.q) / form.serves, r.u, lang), n: r.n.trim() || foodName(food, lang) });
+          return;
+        }
+      }
+    }
     if (res.value) {
       const per4 = 4 / form.serves;
       const r = { ...res.value, serves: form.serves, desc: form.desc.trim(), ing: res.value.ing.map(([n, q, ...rest]) => [n, q * per4, ...rest]) };
@@ -111,7 +135,11 @@ export default function AddRecipe({ id, back }) {
   const ingError = errors.ing || Object.entries(errors).find(([k]) => k.startsWith('ing.'))?.[1];
 
   return (
-    <Screen scrollRef={scroll} footer={<Button label={t('saveBtn')} onPress={save} />}>
+    <Screen scrollRef={scroll} footer={<Button label={t('saveBtn')} onPress={() => save(false)} />}>
+      {tooMuch ? (
+        <ConfirmDialog title={t('tooMuchTitle')} message={t('tooMuchBody', tooMuch)} confirmLabel={t('saveAnyway')} cancelLabel={t('fixIt')}
+          onCancel={() => setTooMuch(null)} onConfirm={() => { setTooMuch(null); save(true); }} />
+      ) : null}
       <Row style={{ justifyContent: 'space-between' }}>
         <View style={{ width: 40 }} />
         <T v="heading" center style={{ flex: 1 }}>{t(editing ? 'editRecipe' : 'newRecipe')}</T>
@@ -179,7 +207,8 @@ export default function AddRecipe({ id, back }) {
                 <View style={{ width: 26, height: 26, borderRadius: 13, backgroundColor: color.accentSoft, alignItems: 'center', justifyContent: 'center' }}>
                   <T v="label" c="accent" center style={{ fontFamily: font.medium }}>{i + 1}</T>
                 </View>
-                <Field style={{ flex: 1 }} placeholder={t('ingPh')} value={r.n} maxLength={40} onChangeText={v => setRow(i, { n: v })} accessibilityLabel={t('ingNameAria', { i: i + 1 })} />
+                <Field style={{ flex: 1 }} placeholder={t('ingPh')} value={r.n} maxLength={40} onChangeText={v => setRow(i, { n: v, f: null })} accessibilityLabel={t('ingNameAria', { i: i + 1 })}
+                  onFocus={() => setFocused(i)} onBlur={() => setFocused(f => (f === i ? -1 : f))} />
                 <Field style={{ width: 70 }} inputStyle={{ textAlign: 'center', paddingHorizontal: 6 }} placeholder={t('colQty')} value={r.q} keyboardType="decimal-pad"
                   onChangeText={v => setRow(i, { q: v.replace(',', '.') })} accessibilityLabel={t('qtyAria', { i: i + 1 })} />
                 {form.ing.length > 1 ? (
@@ -187,6 +216,7 @@ export default function AddRecipe({ id, back }) {
                     onPress={() => update({ ing: form.ing.filter((_, j) => j !== i) }, 'ing.' + i)} />
                 ) : null}
               </Row>
+              <FoodHint row={r} focused={focused === i} onLink={patch => setRow(i, patch)} />
               <Units value={r.u} lang={lang} onChange={u => setRow(i, { u })} />
             </View>
           );

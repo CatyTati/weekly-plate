@@ -143,7 +143,7 @@ export function validateRecipe(form, existing, t) {
     errors, first: null,
     value: {
       id: 'c' + Date.now(), name, time: tn, m: 'stove', tags, custom: true,
-      ing: full.map(r => [r.n.trim(), Number(r.q), r.u, r.a, 0]),
+      ing: full.map(r => [r.n.trim(), Number(r.q), r.u, r.a, 0, r.f || null]),
       steps, photos: (form.photos || []).slice(0, LIMITS.photos),
       kid: tags.includes('kids') && form.kid?.trim() ? form.kid.trim() : undefined,
       keep: tags.includes('prep') ? 3 : 0,

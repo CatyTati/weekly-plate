@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View, useColorScheme } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -23,6 +23,8 @@ import People from './src/screens/People';
 import Profile from './src/screens/Profile';
 import Settings from './src/screens/Settings';
 import Menu from './src/screens/Menu';
+import Foods from './src/screens/Foods';
+import { loadFoods } from './src/foods';
 
 function Root() {
   const { ready, state, user, recovery, rtl, signedIn } = useStore();
@@ -33,6 +35,7 @@ function Root() {
   const [stack, setStack] = useState([]); // screens opened on top of a view
   const [menu, setMenu] = useState(false);
   const [weekView, setWeekView] = useState(initialWeekView);
+  useEffect(() => { loadFoods(user?.id).catch(() => {}); }, [user?.id]); // for calories
 
   const nav = useMemo(() => ({
     go: v => { setStack([]); setView(v); setMenu(false); },
@@ -64,6 +67,7 @@ function Root() {
   else if (top?.screen === 'comments') body = <Comments recipeId={top.params.recipeId} name={top.params.name} owner={top.params.owner} back={nav.back} />;
   else if (top?.screen === 'add') body = <AddRecipe id={top.params?.id} back={nav.back} />;
   else if (top?.screen === 'prep') body = <Prep back={nav.back} />;
+  else if (top?.screen === 'foods') body = <Foods back={nav.back} />;
   else if (view === 'home') body = <Home />;
   else if (view === 'week') body = <Week open={nav.open} view={weekView} setView={setWeekView} />;
   else if (view === 'feed') body = <Feed />;
