@@ -25,13 +25,15 @@ function FoodRow({ food, adder, actions }) {
         </View>
         <View style={{ alignItems: 'flex-end' }}>
           <T v="bodyStrong" c="accent">{num(food.kcal, lang)}</T>
-          <T v="label" c="muted">{t('kcalLabel')}</T>
+          <T v="label" c="muted">{t('kcalPer100')}</T>
         </View>
       </Row>
       <T v="caption" c="muted">
-        {[`${t('proteinLabel')} ${g(food.protein)}`, `${t('carbsLabel')} ${g(food.carbs)}`, `${t('fatLabel')} ${g(food.fat)}`,
-          food.piece_g ? t('perPiece', { g: num(food.piece_g, lang) }) : null, aisleName(food.aisle, lang)].filter(Boolean).join(' · ')}
+        {[`${t('proteinLabel')} ${g(food.protein)}`, `${t('carbsLabel')} ${g(food.carbs)}`, `${t('fatLabel')} ${g(food.fat)}`].join(' · ')}
       </T>
+      {food.piece_g ? (
+        <T v="caption" c="muted">{t('perPieceKcal', { g: num(food.piece_g, lang), k: num(Math.round(food.kcal * food.piece_g / 100), lang) })}</T>
+      ) : null}
       {food.status !== 'approved' ? (
         <Row gap={6} style={{ flexWrap: 'wrap' }}>
           <View style={{ backgroundColor: food.status === 'rejected' ? color.errorSoft : color.accentSoft, borderRadius: 99, paddingHorizontal: 10, paddingVertical: 3 }}>

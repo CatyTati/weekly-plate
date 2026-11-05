@@ -56,7 +56,7 @@ export function FoodHint({ row, focused, onLink }) {
             <Row gap={8}>
               <Icon name="plus" c="accent" size={14} />
               <T v="bodyStrong" style={{ flex: 1 }} numberOfLines={1}>{foodName(food, lang)}</T>
-              <T v="label" c="muted">{num(Math.round(food.kcal), lang)} {t('kcalLabel')}</T>
+              <T v="label" c="muted">{num(Math.round(food.kcal), lang)} {t('kcalPer100')}</T>
             </Row>
           </Pressable>
         ))}
