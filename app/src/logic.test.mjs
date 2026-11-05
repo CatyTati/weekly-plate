@@ -51,17 +51,19 @@ test('shopping list merges the same ingredient and scales with people', () => {
 test('quantities are rounded and translated', () => {
   assert.equal(fmtQty(1250, 'גרם', 'en'), '1.25 kg');
   assert.equal(fmtQty(2.2, 'יח׳', 'ru'), '3 шт.');
-  assert.equal(fmtQty(130, 'גרם', 'he'), '150 גרם');
+  assert.equal(fmtQty(130, 'גרם', 'he'), '130 גרם');
+  assert.equal(fmtQty(20, 'גרם', 'he'), '20 גרם');
 });
 
 test('amounts written for 4 scale to any number of people', () => {
-  // What the recipe page shows: amount × people ÷ 4, then rounded to something you can measure.
+  // What the recipe page shows: amount × people ÷ 4. Only whole things round up.
   assert.equal(fmtQty(500 * 8 / 4, 'גרם', 'he'), '1 ק״ג');
   assert.equal(fmtQty(500 * 6 / 4, 'גרם', 'he'), '750 גרם');
-  assert.equal(fmtQty(400 * 5 / 4, 'גרם', 'he'), '500 גרם');
+  assert.equal(fmtQty(500 * 5 / 4, 'גרם', 'he'), '625 גרם');
+  assert.equal(fmtQty(130 * 5 / 4, 'מ״ל', 'he'), '163 מ״ל');
   assert.equal(fmtQty(3 * 5 / 4, 'יח׳', 'he'), '4 יח׳'); // 3¾ eggs → 4
   assert.equal(fmtQty(2 * 6 / 4, 'כף', 'he'), '3 כף');
-  assert.equal(fmtQty(1 * 5 / 4, 'כפית', 'he'), '1.5 כפית'); // 1¼ → nearest half
+  assert.equal(fmtQty(1 * 5 / 4, 'כפית', 'he'), '1.25 כפית');
 });
 
 test('cost scales with servings', () => {

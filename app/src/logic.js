@@ -48,10 +48,10 @@ export const ingName = n => n;
 export const dayName = (d, lang) => DAYS[lang][d];
 export const aisleName = (a, lang) => AISLES[lang][a];
 
+// Amounts keep their real value; only whole things (eggs, onions) round up, since you can't use 3.75 eggs.
 export function roundQty(q, u) {
-  if (u === 'גרם') return Math.max(50, Math.round(q / 50) * 50);
-  if (u === 'מ״ל') return Math.max(10, Math.round(q / 10) * 10);
-  if (['כוס', 'כף', 'כפית', 'ק״ג'].includes(u)) return Math.round(q * 2) / 2 || 0.5;
+  if (u === 'גרם' || u === 'מ״ל') return Math.round(q);
+  if (['כוס', 'כף', 'כפית', 'ק״ג'].includes(u)) return Math.round(q * 100) / 100;
   return Math.ceil(q - 1e-9);
 }
 export function fmtQty(q, u, lang) {
