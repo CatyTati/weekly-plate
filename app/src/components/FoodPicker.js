@@ -8,7 +8,7 @@ import { isDemo } from '../auth';
 import { AISLE_ORDER, U, aisleName, num } from '../logic';
 import { didYouMean, foodName, matchFood, normalize, suggestFoods } from '../nutrition';
 import { suggestFood, useFoods } from '../foods';
-import { color, font } from '../theme';
+import { color, font, shadow } from '../theme';
 import { Button, Field, Icon, Pill, Row, T } from './ui';
 
 /** What a row becomes when it's linked to `food`: its name (if you only typed the start), aisle and a fitting unit. */
@@ -42,12 +42,19 @@ export function FoodHint({ row, focused, onLink }) {
   if (focused) {
     const list = suggestFoods(text, index, lang, 4);
     return (
-      <View style={{ backgroundColor: color.surface, borderRadius: 14, borderWidth: 1, borderColor: color.edge, overflow: 'hidden' }}>
+      <View style={{ backgroundColor: color.surface, borderRadius: 14, borderWidth: 1.5, borderColor: color.accent, overflow: 'hidden', ...shadow }}>
+        {list.length ? (
+          <Row gap={6} style={{ backgroundColor: color.accentSoft, paddingHorizontal: 14, paddingVertical: 7 }}>
+            <Icon name="search" c="accent" size={14} />
+            <T v="label" c="accent" style={{ fontFamily: font.medium }}>{t('foodSuggestions')}</T>
+          </Row>
+        ) : null}
         {list.map(food => (
           <Pressable key={food.id} onPress={() => pick(food)} accessibilityRole="button"
-            style={({ pressed }) => ({ paddingHorizontal: 14, paddingVertical: 10, backgroundColor: pressed ? color.accentSoft : 'transparent', borderBottomWidth: 1, borderColor: color.line })}>
+            style={({ pressed }) => ({ paddingHorizontal: 14, paddingVertical: 12, backgroundColor: pressed ? color.accentSoft : 'transparent', borderBottomWidth: 1, borderColor: color.line })}>
             <Row gap={8}>
-              <T style={{ flex: 1 }} numberOfLines={1}>{foodName(food, lang)}</T>
+              <Icon name="plus" c="accent" size={14} />
+              <T v="bodyStrong" style={{ flex: 1 }} numberOfLines={1}>{foodName(food, lang)}</T>
               <T v="label" c="muted">{num(Math.round(food.kcal), lang)} {t('kcalLabel')}</T>
             </Row>
           </Pressable>
