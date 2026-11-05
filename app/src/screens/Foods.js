@@ -11,7 +11,7 @@ import { Card, Field, Icon, Pill, Row, RoundButton, Screen, T } from '../compone
 import { AddFoodSheet } from '../components/FoodPicker';
 
 /** One food: its names, nutrition per 100 g, and (while waiting) who added it and what to do. */
-function FoodRow({ food, adder, actions }) {
+function FoodRow({ food, adder, actions, onEdit }) {
   const { state, t } = useStore();
   const lang = state.lang;
   const others = Object.entries(food.names || {}).filter(([l]) => l !== lang).map(([, list]) => list[0]).filter(Boolean);
@@ -42,6 +42,11 @@ function FoodRow({ food, adder, actions }) {
           {adder ? <T v="label" c="muted">{t('addedBy', { n: adder })}</T> : null}
         </Row>
       ) : null}
+      {onEdit ? (
+        <Pressable onPress={onEdit} accessibilityRole="button" hitSlop={6} style={{ alignSelf: 'flex-start' }}>
+          <T v="label" c="accent" style={{ fontFamily: font.medium }}>{t('edit')}</T>
+        </Pressable>
+      ) : null}
       {actions}
     </Card>
   );
@@ -59,6 +64,7 @@ export default function Foods({ back }) {
   const [error, setError] = useState('');
   const [open, setOpen] = useState({});
   const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState(null);
 
   useEffect(() => { loadFoods(me, true).catch(() => setError(t('eNetwork'))); }, [me]);
   const waiting = foods.filter(f => f.status !== 'approved' && (admin ? f.status === 'pending' : f.created_by === me));
@@ -85,6 +91,7 @@ export default function Foods({ back }) {
         {admin ? <RoundButton icon="plus" label={t('addFoodBtn')} onPress={() => setAdding(true)} /> : null}
       </Row>
       {adding ? <AddFoodSheet name="" onClose={() => setAdding(false)} onAdded={() => setAdding(false)} /> : null}
+      {editing ? <AddFoodSheet food={editing} onClose={() => setEditing(null)} onAdded={() => setEditing(null)} /> : null}
       <Row gap={6}>
         <Pill label={`${t('tabApproved')} · ${num(approvedCount, lang)}`} active={tab === 'approved'} onPress={() => setTab('approved')} />
         <Pill label={`${t(admin ? 'tabPending' : 'tabMine')} · ${num(waiting.length, lang)}`} active={tab === 'waiting'} onPress={() => setTab('waiting')} />
@@ -111,11 +118,11 @@ export default function Foods({ back }) {
                 <View style={{ transform: [{ rotate: expanded ? '180deg' : '0deg' }] }}><Icon name="down" c="muted" size={18} /></View>
               </Row>
             </Pressable>
-            {expanded ? list.map(food => <FoodRow key={food.id} food={food} />) : null}
+            {expanded ? list.map(food => <FoodRow key={food.id} food={food} onEdit={admin ? () => setEditing(food) : null} />) : null}
           </View>
         );
       }) : shown.map(food => (
-        <FoodRow key={food.id} food={food} adder={adders[food.created_by]} actions={
+        <FoodRow key={food.id} food={food} adder={adders[food.created_by]} onEdit={admin ? () => setEditing(food) : null} actions={
           food.status === 'approved' ? null : admin ? (
             <Row gap={8} style={{ marginTop: 4 }}>
               <Pressable onPress={() => act(reviewFood(food.id, 'approved'))} accessibilityRole="button"

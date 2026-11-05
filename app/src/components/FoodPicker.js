@@ -7,7 +7,7 @@ import { useStore } from '../store';
 import { isDemo } from '../auth';
 import { AISLE_ORDER, U, aisleName, num } from '../logic';
 import { didYouMean, exactFood, foodName, matchFood, normalize, suggestFoods } from '../nutrition';
-import { suggestFood, useFoods } from '../foods';
+import { suggestFood, updateFood, useFoods } from '../foods';
 import { color, font, shadow } from '../theme';
 import { Button, Field, Icon, Pill, Row, T } from './ui';
 
@@ -95,28 +95,42 @@ export function FoodHint({ row, focused, onLink }) {
 const decimal = v => v.replace(',', '.').replace(/[^\d.]/g, '');
 const optional = v => (String(v).trim() === '' ? null : Number(v));
 
-/** A short form for a food that isn't in the database. It's yours right away and waits for approval. */
-export function AddFoodSheet({ name, onClose, onAdded }) {
+const LANGS = ['he', 'en', 'ru'];
+const str = v => (v == null ? '' : String(v));
+const nameList = v => v.split(',').map(x => x.trim()).filter(Boolean);
+
+/**
+ * A short form for a food: adding one that isn't in the database (it's yours right away and
+ * waits for approval), or, for an admin, changing any food's names and values (`food`).
+ * Admins write the names in every language, a comma between names that mean the same food.
+ */
+export function AddFoodSheet({ name, food, onClose, onAdded }) {
   const { state, user, t, rtl } = useStore();
   const insets = useSafeAreaInsets();
   const { admin } = useFoods();
   const lang = state.lang;
-  const [f, setF] = useState({ name, aisle: 'pantry', kcal: '', protein: '', carbs: '', fat: '', piece: '' });
+  const [f, setF] = useState(() => food ? {
+    names: Object.fromEntries(LANGS.map(l => [l, (food.names?.[l] || []).join(', ')])), aisle: food.aisle,
+    kcal: str(food.kcal), protein: str(food.protein), carbs: str(food.carbs), fat: str(food.fat), piece: str(food.piece_g),
+  } : { names: { he: '', en: '', ru: '', [lang]: name }, aisle: 'pantry', kcal: '', protein: '', carbs: '', fat: '', piece: '' });
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const set = patch => { setF(x => ({ ...x, ...patch })); setError(''); };
+  const setName = (l, v) => set({ names: { ...f.names, [l]: v } });
 
   const save = () => {
     const kcal = Number(f.kcal);
-    if (!f.name.trim()) return setError(t('eFoodName'));
+    const names = Object.fromEntries((admin ? LANGS : [lang]).map(l => [l, nameList(f.names[l])]).filter(([, list]) => list.length));
+    if (!Object.keys(names).length) return setError(t('eFoodName'));
     if (f.kcal === '' || !(kcal >= 0 && kcal <= 900)) return setError(t('eKcal'));
     const grams = v => { const n = optional(v); return n == null ? null : Math.min(100, Math.max(0, n)); };
+    const values = {
+      names, aisle: f.aisle, kcal, protein: grams(f.protein), carbs: grams(f.carbs), fat: grams(f.fat),
+      piece_g: optional(f.piece) > 0 ? optional(f.piece) : null,
+    };
     setBusy(true);
-    suggestFood(user.id, {
-      names: { [lang]: [f.name.trim()] }, aisle: f.aisle, kcal,
-      protein: grams(f.protein), carbs: grams(f.carbs), fat: grams(f.fat),
-      piece_g: optional(f.piece) > 0 ? optional(f.piece) : null, density: null,
-    }).then(onAdded).catch(() => { setError(t('eNetwork')); setBusy(false); });
+    (food ? updateFood(food.id, values) : suggestFood(user.id, { ...values, density: null }))
+      .then(onAdded).catch(() => { setError(t('eNetwork')); setBusy(false); });
   };
 
   const small = (key, label) => (
@@ -129,9 +143,19 @@ export function AddFoodSheet({ name, onClose, onAdded }) {
         <Pressable style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.35)' }]} accessibilityLabel={t('close')} onPress={onClose} />
         <View style={{ backgroundColor: color.bg, borderTopLeftRadius: 28, borderTopRightRadius: 28, maxHeight: '90%' }}>
           <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 22, paddingBottom: 22 + insets.bottom, gap: 14 }}>
-            <T v="title">{t('newFoodTitle')}</T>
-            <T v="caption" c="muted">{t(admin ? 'newFoodHintAdmin' : 'newFoodHint')}</T>
-            <Field label={t('fFoodName')} value={f.name} maxLength={40} onChangeText={v => set({ name: v })} />
+            <T v="title">{t(food ? 'editFoodTitle' : 'newFoodTitle')}</T>
+            <T v="caption" c="muted">{t(food ? 'editFoodHint' : admin ? 'newFoodHintAdmin' : 'newFoodHint')}</T>
+            {admin ? (
+              <>
+                {LANGS.map(l => (
+                  <Field key={l} label={t('fFoodNameIn_' + l)} value={f.names[l]} maxLength={120} onChangeText={v => setName(l, v)}
+                    inputStyle={l === 'he' ? null : { writingDirection: 'ltr', textAlign: rtl ? 'right' : 'left' }} />
+                ))}
+                <T v="caption" c="muted">{t('namesHint')}</T>
+              </>
+            ) : (
+              <Field label={t('fFoodName')} value={f.names[lang]} maxLength={40} onChangeText={v => setName(lang, v)} />
+            )}
             <View style={{ gap: 8 }}>
               <T v="label" c="muted">{t('fAisle')}</T>
               <Row gap={6} style={{ flexWrap: 'wrap' }}>
@@ -147,7 +171,7 @@ export function AddFoodSheet({ name, onClose, onAdded }) {
             </Row>
             <Field label={t('fPiece')} value={f.piece} keyboardType="decimal-pad" onChangeText={v => set({ piece: decimal(v) })} />
             {error ? <T v="caption" c="error">{error}</T> : null}
-            <Button label={busy ? '…' : t('addFoodBtn')} onPress={busy ? undefined : save} />
+            <Button label={busy ? '…' : t(food ? 'save' : 'addFoodBtn')} onPress={busy ? undefined : save} />
             <Pressable onPress={onClose} hitSlop={8} style={{ alignSelf: 'center' }}><T v="bodyStrong" c="muted">{t('cancel')}</T></Pressable>
           </ScrollView>
         </View>

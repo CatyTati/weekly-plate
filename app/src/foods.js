@@ -77,6 +77,15 @@ export async function reviewFood(id, status) {
   return f;
 }
 
+/** Admin only: changes a food's names and values. */
+export async function updateFood(id, values) {
+  const { data, error } = await supabase.from('foods').update(values).eq('id', id).select(COLUMNS).single();
+  if (error) throw error;
+  const f = fromRow(data);
+  put([f]);
+  return f;
+}
+
 /** Deletes a food: admins any, others only their own that wasn't approved. */
 export async function deleteFood(id) {
   const { error } = await supabase.from('foods').delete().eq('id', id);
