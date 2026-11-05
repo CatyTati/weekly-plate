@@ -141,11 +141,11 @@ export function Header({ title, sub, right, menu = true }) {
 export const Card = ({ style, children }) => <View style={[s.card, style]}>{children}</View>;
 export const Row = ({ style, children, gap = 8 }) => <View style={[s.row, { gap }, style]}>{children}</View>;
 
-export function Button({ label, onPress, kind = 'primary', style, icon }) {
+export function Button({ label, onPress, kind = 'primary', style, icon, disabled }) {
   const primary = kind === 'primary';
   return (
-    <Pressable accessibilityRole="button" onPress={onPress}
-      style={({ pressed }) => [s.btn, { backgroundColor: primary ? color.accent : color.accentSoft, opacity: pressed ? 0.85 : 1 }, style]}>
+    <Pressable accessibilityRole="button" accessibilityState={{ disabled: !!disabled }} onPress={disabled ? undefined : onPress}
+      style={({ pressed }) => [s.btn, { backgroundColor: primary ? color.accent : color.accentSoft, opacity: disabled ? 0.4 : pressed ? 0.85 : 1 }, style]}>
       {icon ? <Icon name={icon} c={primary ? 'onAccent' : 'accent'} size={18} /> : null}
       <T v="bodyStrong" c={primary ? 'onAccent' : 'accent'} center>{label}</T>
     </Pressable>

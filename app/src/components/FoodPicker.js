@@ -8,6 +8,7 @@ import { isDemo } from '../auth';
 import { AISLE_ORDER, U, aisleName, num } from '../logic';
 import { didYouMean, exactFood, foodName, matchFood, normalize, suggestFoods } from '../nutrition';
 import { suggestFood, updateFood, useFoods } from '../foods';
+import { findNutrition } from '../lookup';
 import { color, font, shadow } from '../theme';
 import { Button, Field, Icon, Pill, Row, T } from './ui';
 
@@ -107,7 +108,7 @@ const nameList = v => v.split(',').map(x => x.trim()).filter(Boolean);
 export function AddFoodSheet({ name, food, onClose, onAdded }) {
   const { state, user, t, rtl } = useStore();
   const insets = useSafeAreaInsets();
-  const { admin } = useFoods();
+  const { admin, index } = useFoods();
   const lang = state.lang;
   const [f, setF] = useState(() => food ? {
     names: Object.fromEntries(LANGS.map(l => [l, (food.names?.[l] || []).join(', ')])), aisle: food.aisle,
@@ -117,11 +118,29 @@ export function AddFoodSheet({ name, food, onClose, onAdded }) {
   const [busy, setBusy] = useState(false);
   const set = patch => { setF(x => ({ ...x, ...patch })); setError(''); };
   const setName = (l, v) => set({ names: { ...f.names, [l]: v } });
+  const [look, setLook] = useState({ busy: false, list: null, from: '', failed: false });
+
+  // A name that already belongs to another food in the database.
+  const typed = (admin ? LANGS : [lang]).flatMap(l => nameList(f.names[l] || ''));
+  const dupe = typed.map(n => exactFood(n, index)).find(x => x && x.id !== food?.id) || null;
+
+  const lookUp = () => {
+    Keyboard.dismiss();
+    setLook({ busy: true, list: null, from: '', failed: false });
+    findNutrition(LANGS.map(l => nameList(f.names[l] || '')[0]))
+      .then(list => setLook({ busy: false, list, from: '', failed: false }))
+      .catch(() => setLook({ busy: false, list: null, from: '', failed: true }));
+  };
+  const usePick = p => {
+    set({ kcal: str(p.kcal), protein: str(p.protein), carbs: str(p.carbs), fat: str(p.fat) });
+    setLook({ busy: false, list: null, from: [p.name, p.brand].filter(Boolean).join(' · '), failed: false });
+  };
 
   const save = () => {
     const kcal = Number(f.kcal);
     const names = Object.fromEntries((admin ? LANGS : [lang]).map(l => [l, nameList(f.names[l])]).filter(([, list]) => list.length));
     if (!Object.keys(names).length) return setError(t('eFoodName'));
+    if (dupe) return setError(t('foodExists', { n: foodName(dupe, lang) }));
     if (f.kcal === '' || !(kcal >= 0 && kcal <= 900)) return setError(t('eKcal'));
     const grams = v => { const n = optional(v); return n == null ? null : Math.min(100, Math.max(0, n)); };
     const values = {
@@ -156,6 +175,52 @@ export function AddFoodSheet({ name, food, onClose, onAdded }) {
             ) : (
               <Field label={t('fFoodName')} value={f.names[lang]} maxLength={40} onChangeText={v => setName(lang, v)} />
             )}
+            {dupe ? (
+              <Row gap={6} style={{ backgroundColor: color.errorSoft, borderRadius: 12, padding: 10 }}>
+                <Icon name="alert" c="error" size={16} />
+                <T v="caption" c="error" style={{ flex: 1 }}>{t('foodExists', { n: foodName(dupe, lang) })}</T>
+              </Row>
+            ) : null}
+            {dupe ? null : <>
+            <Pressable onPress={look.busy ? undefined : lookUp} accessibilityRole="button"
+              style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 12, borderRadius: 14,
+                borderWidth: 1.5, borderColor: color.accent, backgroundColor: pressed ? color.accent : color.accentSoft })}>
+              {({ pressed }) => (
+                <>
+                  <Icon name="search" c={pressed ? 'onAccent' : 'accent'} size={18} />
+                  <T v="bodyStrong" c={pressed ? 'onAccent' : 'accent'}>{t(look.busy ? 'findingValues' : 'findValues')}</T>
+                </>
+              )}
+            </Pressable>
+            {look.failed ? <T v="caption" c="error">{t('eNetwork')}</T> : null}
+            {look.list && !look.list.length ? <T v="caption" c="muted">{t('noValuesFound')}</T> : null}
+            {look.list?.length ? (
+              <View style={{ gap: 6 }}>
+                <T v="label" c="muted">{t('pickValues')}</T>
+                <View style={{ backgroundColor: color.surface, borderRadius: 14, borderWidth: 1, borderColor: color.edge, overflow: 'hidden' }}>
+                  {look.list.map(p => (
+                    <Pressable key={p.id + p.name} onPress={() => usePick(p)} accessibilityRole="button"
+                      style={({ pressed }) => ({ paddingHorizontal: 14, paddingVertical: 10, gap: 2, backgroundColor: pressed ? color.accentSoft : 'transparent', borderBottomWidth: 1, borderColor: color.line })}>
+                      <Row gap={8}>
+                        <T v="bodyStrong" style={{ flex: 1 }} numberOfLines={1}>{p.name}</T>
+                        <T v="label" c="accent">{num(p.kcal, lang)} {t('kcalPer100')}</T>
+                      </Row>
+                      <T v="caption" c="muted" numberOfLines={1}>
+                        {[p.brand, ...[['proteinLabel', p.protein], ['carbsLabel', p.carbs], ['fatLabel', p.fat]].filter(([, v]) => v != null).map(([k, v]) => `${t(k)} ${num(v, lang)}`)].filter(Boolean).join(' · ')}
+                      </T>
+                    </Pressable>
+                  ))}
+                </View>
+                <T v="caption" c="muted">{t('valuesSource')}</T>
+              </View>
+            ) : null}
+            {look.from ? (
+              <Row gap={6} style={{ backgroundColor: color.accentSoft, borderRadius: 12, padding: 10 }}>
+                <Icon name="check" c="accent" size={16} />
+                <T v="caption" c="accent" style={{ flex: 1 }}>{t('valuesFrom', { n: look.from })}</T>
+              </Row>
+            ) : null}
+            </>}
             <View style={{ gap: 8 }}>
               <T v="label" c="muted">{t('fAisle')}</T>
               <Row gap={6} style={{ flexWrap: 'wrap' }}>
@@ -171,7 +236,7 @@ export function AddFoodSheet({ name, food, onClose, onAdded }) {
             </Row>
             <Field label={t('fPiece')} value={f.piece} keyboardType="decimal-pad" onChangeText={v => set({ piece: decimal(v) })} />
             {error ? <T v="caption" c="error">{error}</T> : null}
-            <Button label={busy ? '…' : t(food ? 'save' : 'addFoodBtn')} onPress={busy ? undefined : save} />
+            <Button label={busy ? '…' : t(food ? 'save' : 'addFoodBtn')} onPress={busy ? undefined : save} disabled={!!dupe} />
             <Pressable onPress={onClose} hitSlop={8} style={{ alignSelf: 'center' }}><T v="bodyStrong" c="muted">{t('cancel')}</T></Pressable>
           </ScrollView>
         </View>
