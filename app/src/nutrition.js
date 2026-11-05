@@ -93,6 +93,15 @@ export function didYouMean(name, index) {
   return bestD <= allowed ? best : null;
 }
 
+/** Whether one of the food's names has a word starting with the text ("תות" finds strawberries, not "פיתות"). */
+export function nameStartsWith(food, text) {
+  const n = normalize(text);
+  return allNames(food).some(alias => {
+    const w = normalize(alias).split(' ');
+    return w.some((_, i) => w.slice(i).join(' ').startsWith(n));
+  });
+}
+
 /** Foods to offer while typing: names in your language that start with the text, then other matches. */
 export function suggestFoods(text, index, lang, limit = 5) {
   const n = normalize(text);
@@ -102,7 +111,7 @@ export function suggestFoods(text, index, lang, limit = 5) {
     let score = 0;
     for (const [l, list] of Object.entries(food.names || {})) for (const alias of list) {
       const a = normalize(alias);
-      const s = a.startsWith(n) ? 3 : a.split(' ').some(x => x.startsWith(n)) ? 2 : a.includes(n) ? 1 : 0;
+      const s = a.startsWith(n) ? 3 : a.split(' ').some(x => x.startsWith(n)) ? 2 : 0;
       if (s) score = Math.max(score, s + (l === lang ? 0.5 : 0));
     }
     if (score) scored.push({ food, score });

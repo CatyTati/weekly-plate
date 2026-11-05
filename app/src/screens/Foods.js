@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { Pressable, RefreshControl, View } from 'react-native';
 import { useStore } from '../store';
 import { AISLE_ORDER, aisleName, num } from '../logic';
-import { foodName, normalize } from '../nutrition';
+import { foodName, nameStartsWith, normalize } from '../nutrition';
 import { addersOf, deleteFood, loadFoods, reviewFood, useFoods } from '../foods';
 import { color, font } from '../theme';
 import { Card, Field, Icon, Pill, Row, RoundButton, Screen, T } from '../components/ui';
@@ -68,7 +68,7 @@ export default function Foods({ back }) {
 
   const n = normalize(q);
   const shown = (tab === 'approved' ? foods.filter(f => f.status === 'approved') : waiting)
-    .filter(f => !n || Object.values(f.names || {}).flat().some(x => normalize(x).includes(n)))
+    .filter(f => !n || nameStartsWith(f, q))
     .sort((a, b) => foodName(a, lang).localeCompare(foodName(b, lang), lang));
   const approvedCount = foods.filter(f => f.status === 'approved').length;
 

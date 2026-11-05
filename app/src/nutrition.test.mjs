@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { normalize, indexFoods, exactFood, matchFood, didYouMean, suggestFoods, gramsOf, nutritionOf, looksTooMuch, foodName } from './nutrition.js';
+import { normalize, indexFoods, exactFood, nameStartsWith, matchFood, didYouMean, suggestFoods, gramsOf, nutritionOf, looksTooMuch, foodName } from './nutrition.js';
 
 // The starter foods, read from the same SQL that fills the database.
 const sql = readFileSync(new URL('../../backend/supabase/migrations/20261105010000_foods_seed.sql', import.meta.url), 'utf8');
@@ -37,6 +37,14 @@ test('a name already in the database is found exactly, a longer one is not', () 
   assert.equal(exactFood('Onions', index)?.names.en[0], 'onion');
   assert.equal(exactFood('בצל מטוגן', index), null);
   assert.equal(exactFood('בצ', index), null);
+});
+
+test('search matches the start of a word, not the middle', () => {
+  const en = list => list.map(f => f.names.en[0]);
+  assert.deepEqual(en(foods.filter(f => nameStartsWith(f, 'תות'))), ['strawberries']);
+  assert.ok(!en(suggestFoods('תות', index, 'he')).includes('pita'));
+  assert.ok(en(foods.filter(f => nameStartsWith(f, 'זית'))).includes('olive oil'));
+  assert.ok(en(foods.filter(f => nameStartsWith(f, 'שמן ז'))).includes('olive oil'));
 });
 
 test('typos get a suggestion, unrelated words do not', () => {
