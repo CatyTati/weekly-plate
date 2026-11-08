@@ -87,7 +87,8 @@ export default function Profile({ id, back }) {
   const lock = status === 'pending' ? t('lockPending') : !approved ? (profile?.isPrivate ? t('lockPrivate') : t('lockFollow')) : null;
 
   return (
-    <Screen header={<Row style={{ justifyContent: 'flex-end' }}><RoundButton icon="close" label={t('close')} onPress={back} /></Row>}>
+    // A back arrow, not a close: the profile may have opened from a recipe, and back returns to it.
+    <Screen header={<Row><RoundButton icon="back" flip label={t('back')} onPress={back} /></Row>}>
       {failed || error ? <T c="error">{t('eNetwork')}</T> : null}
       {!profile ? <ActivityIndicator color={color.accent} /> : (
         <>

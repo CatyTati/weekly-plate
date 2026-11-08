@@ -109,11 +109,14 @@ export default function RecipeDetail({ id, recipe, canCopy, pickFor, back }) {
           onCancel={() => setConfirmDel(false)} onConfirm={() => { setConfirmDel(false); deleteRecipe(r.id); back(); }} />
       ) : null}
       {theirs && recipe.ownerName ? (
-        // Whose recipe this is.
-        <Row gap={8}>
-          <Avatar letter={recipe.ownerName[0]} size={28} />
-          <T v="bodyStrong" c="accent">{t('recipeBy', { n: recipe.ownerName })}</T>
-        </Row>
+        // Whose recipe this is. Their page opens on top, and its back arrow returns here.
+        <Pressable onPress={recipe.owner ? () => open('profile', { id: recipe.owner }) : undefined} accessibilityRole="button" hitSlop={6}
+          style={({ pressed }) => ({ alignSelf: 'flex-start', opacity: pressed ? 0.7 : 1 })}>
+          <Row gap={8}>
+            <Avatar letter={recipe.ownerName[0]} size={28} />
+            <T v="bodyStrong" c="accent">{t('recipeBy', { n: recipe.ownerName })}</T>
+          </Row>
+        </Pressable>
       ) : null}
       <PhotoSlider photos={r.photos} height={220} radius={28} empty={<FoodArt height={220} />} />
       <View style={{ gap: 8 }}>
