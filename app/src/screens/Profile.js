@@ -1,10 +1,11 @@
 // Someone's profile: their recipes for everyone, their weeks for approved followers.
-// Copying a recipe or a week needs an approved follow.
+// Copying a recipe or a week needs an approved follow. A private account shows everyone
+// else only its photos, with no way into the recipes.
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, View, useWindowDimensions } from 'react-native';
 import { useStore } from '../store';
 import { useNav } from '../nav';
-import { getProfile, recipesOf, weeksOf } from '../social';
+import { getProfile, photosOf, recipesOf, weeksOf } from '../social';
 import { dayName, keyToDate, num, pick, weekKey, weekRangeLabel } from '../logic';
 import { color, font } from '../theme';
 import { Avatar, Button, Card, CopiedNote, Icon, Row, RoundButton, Screen, T } from '../components/ui';
@@ -28,14 +29,23 @@ function Tile({ r, size, onPress }) {
             <T v="label" c="#fff">{r.time} {t('min')}</T>
           </Row>
         </View>
+        {r.copiedFromMe ? <View style={{ position: 'absolute', top: 8, start: 8, end: r.photos.length > 1 ? 44 : 8 }}><CopiedNote recipe={r} /></View> : null}
         {r.photos.length > 1 ? (
           <View style={{ position: 'absolute', top: 8, end: 8, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 99, paddingHorizontal: 7, paddingVertical: 2 }}>
             <T v="label" c="#fff">{r.photos.length}</T>
           </View>
         ) : null}
       </View>
-      {r.copiedFromMe ? <View style={{ marginTop: 6 }}><CopiedNote recipe={r} /></View> : null}
     </Pressable>
+  );
+}
+
+/** A private account's recipe, for someone not approved yet: its photo and nothing else. */
+function PhotoTile({ photo, size }) {
+  return (
+    <View style={{ width: size, height: size, borderRadius: 18, overflow: 'hidden', backgroundColor: color.plate }}>
+      {photo ? <Image source={{ uri: photo }} style={{ width: size, height: size }} /> : <FoodArt height={size} radius={0} />}
+    </View>
   );
 }
 
@@ -47,6 +57,7 @@ export default function Profile({ id, back }) {
   const { busy, statusOf, toggle, error } = useFollowing(me);
   const [profile, setProfile] = useState(null);
   const [recipes, setRecipes] = useState(null);
+  const [photos, setPhotos] = useState(null); // a private account's photos, when its recipes stay closed
   const [weeks, setWeeks] = useState([]);
   const [copying, setCopying] = useState(null); // a week being copied
   const [failed, setFailed] = useState(false);
@@ -58,9 +69,13 @@ export default function Profile({ id, back }) {
   const load = useCallback(() => {
     setFailed(false);
     Promise.all([getProfile(id), recipesOf(id, me)])
-      .then(([p, rs]) => { setProfile(p); setRecipes(rs.map(r => ({ ...r, ownerName: p.name }))); })
+      .then(async ([p, rs]) => {
+        setProfile(p);
+        setRecipes(rs.map(r => ({ ...r, ownerName: p.name })));
+        setPhotos(p.isPrivate && id !== me && !rs.length ? await photosOf(id).catch(() => null) : null);
+      })
       .catch(() => setFailed(true));
-  }, [id, me]);
+  }, [id, me, approved]);
   useEffect(load, [load]);
   useEffect(() => {
     if (!approved) { setWeeks([]); return; }
@@ -84,7 +99,7 @@ export default function Profile({ id, back }) {
                 {profile.isPrivate ? <Icon name="lock" c="muted" size={14} /> : null}
               </Row>
               <Row gap={12}>
-                <Row gap={4}><Icon name="book" c="muted" size={14} /><T v="caption" c="muted">{num(recipes ? recipes.length : 0, lang)} {t('statRecipes')}</T></Row>
+                <Row gap={4}><Icon name="book" c="muted" size={14} /><T v="caption" c="muted">{num(photos ? photos.length : recipes ? recipes.length : 0, lang)} {t('statRecipes')}</T></Row>
                 <Row gap={4}><Icon name="users" c="muted" size={14} /><T v="caption" c="muted">{num(profile.followers, lang)} {t('statFollowers')}</T></Row>
               </Row>
             </View>
@@ -124,10 +139,21 @@ export default function Profile({ id, back }) {
           ) : null}
 
           <Row gap={8}><Icon name="book" c="accent" size={18} /><T v="heading">{t('theirRecipes')}</T></Row>
-          {recipes && !recipes.length ? <T c="muted">{t('noTheirRecipes')}</T> : null}
-          <Row gap={GAP} style={{ flexWrap: 'wrap', alignItems: 'flex-start' }}>
-            {(recipes || []).map(r => <Tile key={r.id} r={r} size={tile} onPress={() => open('recipe', { recipe: r, canCopy: approved })} />)}
-          </Row>
+          {photos ? (
+            <>
+              {!photos.length ? <T c="muted">{t('noTheirRecipes')}</T> : null}
+              <Row gap={GAP} style={{ flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                {photos.map(p => <PhotoTile key={p.id} photo={p.photo} size={tile} />)}
+              </Row>
+            </>
+          ) : (
+            <>
+              {recipes && !recipes.length ? <T c="muted">{t('noTheirRecipes')}</T> : null}
+              <Row gap={GAP} style={{ flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                {(recipes || []).map(r => <Tile key={r.id} r={r} size={tile} onPress={() => open('recipe', { recipe: r, canCopy: approved })} />)}
+              </Row>
+            </>
+          )}
         </>
       )}
       {copying ? (
