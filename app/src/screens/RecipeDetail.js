@@ -111,6 +111,16 @@ export default function RecipeDetail({ id, recipe, canCopy, pickFor, back }) {
       <PhotoSlider photos={r.photos} height={220} radius={28} empty={<FoodArt height={220} />} />
       <View style={{ gap: 8 }}>
         <T v="title">{pick(r.name, lang)}</T>
+        {theirs && recipe.ownerName ? (
+          // Whose recipe this is, and a way to their page.
+          <Pressable onPress={recipe.owner ? () => open('profile', { id: recipe.owner }) : undefined} accessibilityRole="button" hitSlop={6}
+            style={({ pressed }) => ({ alignSelf: 'flex-start', opacity: pressed ? 0.7 : 1 })}>
+            <Row gap={8}>
+              <Avatar letter={recipe.ownerName[0]} size={28} />
+              <T v="bodyStrong" c="accent">{t('recipeBy', { n: recipe.ownerName })}</T>
+            </Row>
+          </Pressable>
+        ) : null}
         <CopiedNote recipe={r} />
         {desc ? <T c="muted">{desc}</T> : null}
         <Row gap={6} style={{ flexWrap: 'wrap' }}>{r.tags.map(k => <Tag key={k} k={k} />)}</Row>
