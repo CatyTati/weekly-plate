@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore } from '../store';
 import { isDemo } from '../auth';
 import { AISLE_ORDER, U, aisleName, num } from '../logic';
-import { didYouMean, exactFood, foodName, matchFood, normalize, suggestFoods } from '../nutrition';
+import { didYouMean, exactFood, foodName, isOtherName, matchFood, matchedAlias, namesWithout, normalize, suggestFoods } from '../nutrition';
 import { suggestFood, updateFood, useFoods } from '../foods';
 import { findNutrition } from '../lookup';
 import { color, font, shadow } from '../theme';
@@ -23,10 +23,13 @@ export function linkRow(row, food, lang) {
 /** Under an ingredient's name: what it's linked to, suggestions while typing, or a way to add it. */
 export function FoodHint({ row, focused, onLink }) {
   const { state, t } = useStore();
-  const { index, byId } = useFoods();
+  const { index, byId, admin } = useFoods();
   const [adding, setAdding] = useState(false);
   const lang = state.lang;
   const text = row.n.trim();
+  const exact = text.length >= 2 ? exactFood(text, index) : null;
+  // An admin can still make a food of a name that is only another name of an existing one.
+  const canAdd = !isDemo && (!exact || (admin && isOtherName(exact, text)));
   if (text.length < 2) return null;
   const linked = (row.f && byId.get(row.f)) || (!focused ? matchFood(text, index) : null);
   const pick = food => { Keyboard.dismiss(); onLink(linkRow(row, food, lang)); };
@@ -56,15 +59,18 @@ export function FoodHint({ row, focused, onLink }) {
             style={({ pressed }) => ({ paddingHorizontal: 14, paddingVertical: 12, backgroundColor: pressed ? color.surface : 'transparent', borderBottomWidth: 1, borderColor: color.surface })}>
             <Row gap={8}>
               <Icon name="plus" c="accent" size={14} />
-              <T v="bodyStrong" style={{ flex: 1 }} numberOfLines={1}>{foodName(food, lang)}</T>
+              <T v="bodyStrong" style={{ flex: 1 }} numberOfLines={1}>
+                {foodName(food, lang)}
+                {matchedAlias(food, text, lang) ? <T v="label" c="muted">{`  ·  ${t('alsoCalled', { n: matchedAlias(food, text, lang) })}`}</T> : null}
+              </T>
               <T v="label" c="muted">{num(Math.round(food.kcal), lang)} {t('kcalPer100')}</T>
             </Row>
           </Pressable>
         ))}
-        {isDemo || exactFood(text, index) ? null : (
+        {!canAdd ? null : (
           <Pressable onPress={() => { Keyboard.dismiss(); setAdding(true); }} accessibilityRole="button"
             style={({ pressed }) => ({ paddingHorizontal: 14, paddingVertical: 10, backgroundColor: pressed ? color.surface : 'transparent' })}>
-            <Row gap={8}><Icon name="plus" c="accent" size={16} /><T c="accent" style={{ flex: 1, fontFamily: font.medium }} numberOfLines={1}>{t('addNewFood', { n: text })}</T></Row>
+            <Row gap={8}><Icon name="plus" c="accent" size={16} /><T c="accent" style={{ flex: 1, fontFamily: font.medium }} numberOfLines={1}>{t(exact ? 'addAsSeparate' : 'addNewFood', { n: text })}</T></Row>
           </Pressable>
         )}
         {sheet}
@@ -122,7 +128,19 @@ export function AddFoodSheet({ name, food, onClose, onAdded }) {
 
   // A name that already belongs to another food in the database.
   const typed = (admin ? LANGS : [lang]).flatMap(l => nameList(f.names[l] || ''));
-  const dupe = typed.map(n => exactFood(n, index)).find(x => x && x.id !== food?.id) || null;
+  const dupeName = typed.find(n => { const x = exactFood(n, index); return x && x.id !== food?.id; }) || '';
+  const dupe = dupeName ? exactFood(dupeName, index) : null;
+  const [editingDupe, setEditingDupe] = useState(false);
+  const [splitting, setSplitting] = useState(false);
+  const splittable = admin && dupe && isOtherName(dupe, dupeName);
+  const split = () => {
+    setSplitting(true);
+    updateFood(dupe.id, { names: namesWithout(dupe, dupeName) })
+      .catch(() => setError(t('eNetwork'))).finally(() => setSplitting(false));
+  };
+  const dupeText = dupe ? (normalize(dupeName) === normalize(foodName(dupe, lang))
+    ? t('foodExists', { n: foodName(dupe, lang) })
+    : t('foodExistsAs', { a: dupeName, n: foodName(dupe, lang) })) : '';
 
   const lookUp = () => {
     Keyboard.dismiss();
@@ -140,7 +158,7 @@ export function AddFoodSheet({ name, food, onClose, onAdded }) {
     const kcal = Number(f.kcal);
     const names = Object.fromEntries((admin ? LANGS : [lang]).map(l => [l, nameList(f.names[l])]).filter(([, list]) => list.length));
     if (!Object.keys(names).length) return setError(t('eFoodName'));
-    if (dupe) return setError(t('foodExists', { n: foodName(dupe, lang) }));
+    if (dupe) return setError(dupeText);
     if (f.kcal === '' || !(kcal >= 0 && kcal <= 900)) return setError(t('eKcal'));
     const grams = v => { const n = optional(v); return n == null ? null : Math.min(100, Math.max(0, n)); };
     const values = {
@@ -176,11 +194,31 @@ export function AddFoodSheet({ name, food, onClose, onAdded }) {
               <Field label={t('fFoodName')} value={f.names[lang]} maxLength={40} onChangeText={v => setName(lang, v)} />
             )}
             {dupe ? (
-              <Row gap={6} style={{ backgroundColor: color.errorSoft, borderRadius: 12, padding: 10 }}>
-                <Icon name="alert" c="error" size={16} />
-                <T v="caption" c="error" style={{ flex: 1 }}>{t('foodExists', { n: foodName(dupe, lang) })}</T>
-              </Row>
+              <View style={{ backgroundColor: color.errorSoft, borderRadius: 12, padding: 10, gap: 8 }}>
+                <Row gap={6} style={{ alignItems: 'flex-start' }}>
+                  <Icon name="alert" c="error" size={16} />
+                  <T v="caption" c="error" style={{ flex: 1 }}>{dupeText}</T>
+                </Row>
+                {admin ? (
+                  <>
+                    {splittable ? <T v="caption" c="muted">{t('splitFoodHint', { a: dupeName, n: foodName(dupe, lang) })}</T> : null}
+                    <Pressable onPress={splitting ? undefined : splittable ? split : () => setEditingDupe(true)} accessibilityRole="button"
+                      style={({ pressed }) => ({ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 8,
+                        borderRadius: 99, borderWidth: 1.5, borderColor: color.accent, backgroundColor: pressed ? color.accent : color.accentSoft })}>
+                      {({ pressed }) => (
+                        <>
+                          <Icon name={splittable ? 'plus' : 'pencil'} c={pressed ? 'onAccent' : 'accent'} size={15} />
+                          <T v="label" c={pressed ? 'onAccent' : 'accent'} style={{ fontFamily: font.medium }}>
+                            {splitting ? '…' : splittable ? t('splitFoodBtn', { a: dupeName }) : t('editExisting', { n: foodName(dupe, lang) })}
+                          </T>
+                        </>
+                      )}
+                    </Pressable>
+                  </>
+                ) : null}
+              </View>
             ) : null}
+            {editingDupe && dupe ? <AddFoodSheet food={dupe} onClose={() => setEditingDupe(false)} onAdded={() => setEditingDupe(false)} /> : null}
             {dupe ? null : <>
             <Pressable onPress={look.busy ? undefined : lookUp} accessibilityRole="button"
               style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 12, borderRadius: 14,

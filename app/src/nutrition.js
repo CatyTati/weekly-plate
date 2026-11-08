@@ -45,6 +45,16 @@ export function indexFoods(foods) {
   return { foods, byKey, phrases };
 }
 
+/** Whether two names are the same name, ignoring plurals, niqqud and "ה". */
+export const sameName = (a, b) => words(a).join(' ') === words(b).join(' ');
+
+/** Whether `name` is one of the food's other names, not the name it's shown by in any language ("יין אדום" for wine). */
+export const isOtherName = (food, name) => !Object.values(food.names || {}).some(list => list[0] && sameName(list[0], name));
+
+/** The food's names without `name`, so that name can become a food of its own. */
+export const namesWithout = (food, name) =>
+  Object.fromEntries(Object.entries(food.names || {}).map(([l, list]) => [l, list.filter(x => !sameName(x, name))]).filter(([, list]) => list.length));
+
 /** The food named exactly this (ignoring plurals and "ה"), or null. */
 export function exactFood(name, index) {
   const w = words(name);
@@ -100,6 +110,20 @@ export function nameStartsWith(food, text) {
     const w = normalize(alias).split(' ');
     return w.some((_, i) => w.slice(i).join(' ').startsWith(n));
   });
+}
+
+/**
+ * The name of `food` that the text matched, when it isn't the name shown in `lang`
+ * ("יין אדום" matches wine, shown as "יין"), else null.
+ */
+export function matchedAlias(food, text, lang) {
+  const n = normalize(text);
+  const shown = normalize(foodName(food, lang));
+  if (!n || shown.startsWith(n)) return null;
+  return allNames(food).find(alias => {
+    const w = normalize(alias).split(' ');
+    return normalize(alias) !== shown && w.some((_, i) => w.slice(i).join(' ').startsWith(n));
+  }) || null;
 }
 
 /** Foods to offer while typing: names in your language that start with the text, then other matches. */

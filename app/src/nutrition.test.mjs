@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { normalize, indexFoods, exactFood, nameStartsWith, matchFood, didYouMean, suggestFoods, gramsOf, nutritionOf, looksTooMuch, foodName } from './nutrition.js';
+import { normalize, indexFoods, exactFood, nameStartsWith, matchedAlias, isOtherName, namesWithout, matchFood, didYouMean, suggestFoods, gramsOf, nutritionOf, looksTooMuch, foodName } from './nutrition.js';
 
 // The starter foods, read from the same SQL that fills the database.
 const seed = f => readFileSync(new URL(`../../backend/supabase/migrations/${f}`, import.meta.url), 'utf8');
@@ -106,4 +106,19 @@ test('huge amounts and too much salt look like typos', () => {
   assert.ok(!looksTooMuch(rice, 100));
   assert.ok(!looksTooMuch(water, 250));
   assert.equal(normalize('  Ё-Чёрный  перец '), 'е черный перец');
+});
+
+test('a name that is another name of a food is shown as such', () => {
+  const wine = foods.find(f => f.names.en[0] === 'wine');
+  assert.equal(matchedAlias(wine, 'יין אדום', 'he'), 'יין אדום');
+  assert.equal(matchedAlias(wine, 'יין', 'he'), null);
+  assert.equal(exactFood('יין אדום', index), wine);
+});
+
+test('another name can be split off into a food of its own', () => {
+  const wine = foods.find(f => f.names.en[0] === 'wine');
+  assert.ok(isOtherName(wine, 'יין אדום'));
+  assert.ok(!isOtherName(wine, 'יין'));
+  assert.deepEqual(namesWithout(wine, 'יין אדום').he, ['יין', 'יין לבן']);
+  assert.deepEqual(namesWithout(wine, 'red wine').en, ['wine', 'white wine']);
 });
