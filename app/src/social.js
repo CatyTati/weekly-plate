@@ -288,6 +288,16 @@ export async function recipesOf(owner, me) {
   return data.map(row => ({ ...fromRow(row), copiedFromMe: fromMe.has(row.id) }));
 }
 
+/**
+ * A private account's recipes as photos only, for someone who isn't an approved follower:
+ * one entry per recipe, newest first, with its first photo (null when it has none).
+ */
+export async function photosOf(owner) {
+  const { data, error } = await supabase.rpc('photos_of', { owner });
+  if (error) throw error;
+  return data.map(r => ({ id: r.recipe_id, photo: r.storage_path ? photoUrl(r.storage_path) : null }));
+}
+
 /* ---------- weekly plans ---------- */
 
 /** Saves a week. `days` has 7 entries: a recipe's database id, a built-in id, or null. */
