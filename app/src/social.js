@@ -112,14 +112,14 @@ export async function removeFollower(me, id) {
 
 const toRow = r => ({
   name: r.name, prep_minutes: r.time, method: r.steps, tags: r.tags,
-  kid_note: r.kid || null, keeps_days: r.keep || null, cook_method: r.m || 'stove', is_public: true,
+  kid_note: r.kid || null, keeps_days: r.keep || null, cook_method: r.m || 'stove', is_public: true, meal: r.meal || 'dinner',
   ingredients: r.ing.map(([name, qty, unit, aisle, , food]) => ({ name, qty, unit: UNIT_CODE[unit] || 'pcs', aisle, food_id: food || null })),
 });
 
 const fromRow = row => ({
   id: row.id, cloud: row.id, owner: row.owner_id, custom: true, created: row.created_at,
   name: row.name, time: row.prep_minutes, m: row.cook_method, tags: row.tags,
-  kid: row.kid_note || undefined, keep: row.keeps_days || 0, steps: row.method, desc: row.description || '',
+  kid: row.kid_note || undefined, keep: row.keeps_days || 0, steps: row.method, desc: row.description || '', meal: row.meal || 'dinner',
   ing: [...(row.recipe_ingredients || [])].sort((a, b) => a.position - b.position)
     .map(i => [i.name, Number(i.qty), UNIT_FROM_CODE[i.unit] || i.unit, i.aisle, 0, i.food_id || null]),
   photos: [...(row.recipe_photos || [])].sort((a, b) => a.position - b.position).map(p => photoUrl(p.storage_path)),
@@ -222,7 +222,7 @@ export async function copiersOf(recipeId) {
 export async function loadMine(me) {
   const [recipes, plans] = await Promise.all([
     supabase.from('recipes').select('*, recipe_ingredients(*), recipe_photos(*)').eq('owner_id', me).order('created_at'),
-    supabase.from('weekly_plans').select('week_start, plan_days(day, recipe_id, builtin_id)').eq('owner_id', me),
+    supabase.from('weekly_plans').select('week_start, plan_days(day, meal, recipe_id, builtin_id)').eq('owner_id', me),
   ]);
   if (recipes.error) throw recipes.error;
   if (plans.error) throw plans.error;
@@ -240,9 +240,17 @@ export async function loadMine(me) {
     }),
     weeks: Object.fromEntries(plans.data.map(w => {
       const plan = Array(7).fill(null);
-      w.plan_days.forEach(d => { plan[d.day] = d.recipe_id || d.builtin_id; });
+      w.plan_days.filter(d => (d.meal || 'dinner') === 'dinner').forEach(d => { plan[d.day] = d.recipe_id || d.builtin_id; });
       return [w.week_start, plan];
     })),
+    meals: Object.fromEntries(plans.data.map(w => {
+      const byMeal = {};
+      w.plan_days.filter(d => d.meal && d.meal !== 'dinner').forEach(d => {
+        byMeal[d.meal] = byMeal[d.meal] || Array(7).fill(null);
+        byMeal[d.meal][d.day] = d.recipe_id || d.builtin_id;
+      });
+      return [w.week_start, byMeal];
+    }).filter(([, byMeal]) => Object.keys(byMeal).length)),
   };
 }
 
@@ -326,14 +334,20 @@ export async function pushWeek(key, days) {
   if (error) throw error;
 }
 
-/** Someone's weeks from `fromKey` on (only readable by approved followers). */
+/** Saves a week's other meals: for each of breakfast, lunch, snack and dessert, 7 entries. */
+export async function pushMeals(key, meals) {
+  const { error } = await supabase.rpc('save_meals', { week: key, meals });
+  if (error) throw error;
+}
+
+/** Someone's weeks from `fromKey` on (only readable by approved followers). Dinners only. */
 export async function weeksOf(owner, fromKey) {
-  const { data, error } = await supabase.from('weekly_plans').select('week_start, plan_days(day, recipe_id, builtin_id)')
+  const { data, error } = await supabase.from('weekly_plans').select('week_start, plan_days(day, meal, recipe_id, builtin_id)')
     .eq('owner_id', owner).gte('week_start', fromKey).order('week_start').limit(4);
   if (error) throw error;
   return data.map(w => {
     const plan = Array(7).fill(null);
-    w.plan_days.forEach(d => { plan[d.day] = d.recipe_id || d.builtin_id; });
+    w.plan_days.filter(d => (d.meal || 'dinner') === 'dinner').forEach(d => { plan[d.day] = d.recipe_id || d.builtin_id; });
     return { key: w.week_start, plan };
   }).filter(w => w.plan.some(Boolean));
 }

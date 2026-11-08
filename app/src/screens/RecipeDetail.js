@@ -52,7 +52,7 @@ function Nutrition({ recipe }) {
 
 // `pickFor` ({ week, day }) means it was opened while choosing a dinner for that day.
 export default function RecipeDetail({ id, recipe, canCopy, pickFor, back }) {
-  const { state, t, byId, deleteRecipe, copyRecipe, setDay } = useStore();
+  const { state, t, byId, deleteRecipe, copyRecipe, setMeal } = useStore();
   const { open } = useNav();
   const r = recipe || byId(id); // `recipe` is someone else's, shown read-only
   const theirs = !!recipe;
@@ -90,7 +90,7 @@ export default function RecipeDetail({ id, recipe, canCopy, pickFor, back }) {
       </Row>
     } footer={pickFor ? (
       // Back past the list of recipes too, to where the day was chosen.
-      <Button icon="plus" label={t('addDo', { d: dayName(pickFor.day, lang) })} onPress={() => { setDay(pickFor.day, r.id, pickFor.week); back(); back(); }} />
+      <Button icon="plus" label={t('addDo', { d: dayName(pickFor.day, lang) })} onPress={() => { setMeal(pickFor.meal || 'dinner', pickFor.day, r.id, pickFor.week); back(); back(); }} />
     ) : theirs ? (
       // A copy of your own recipe: you already have the original.
       recipe.copiedFromMe ? <T v="caption" c="muted" center>{t('copyOfYours')}</T>

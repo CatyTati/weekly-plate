@@ -2,7 +2,7 @@ import React, { useRef, useState } from 'react';
 import { Image, Pressable, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useStore } from '../store';
-import { LIMITS, TAG_KEYS, U, UNITS, fmtQty, unitName, validateRecipe } from '../logic';
+import { LIMITS, MEALS, TAG_KEYS, U, UNITS, fmtQty, mealOf, unitName, validateRecipe } from '../logic';
 import { foodName, gramsOf, looksTooMuch, matchFood } from '../nutrition';
 import { useFoods } from '../foods';
 import { FoodHint, linkRow } from '../components/FoodPicker';
@@ -10,14 +10,14 @@ import { color, font } from '../theme';
 import { Button, Card, ConfirmDialog, Field, Icon, Pill, Row, RoundButton, Screen, Stepper, T } from '../components/ui';
 
 const blank = () => ({ n: '', q: '', u: U, a: 'pantry', f: null }); // f: the food it's linked to
-const empty = () => ({ name: '', desc: '', time: '30', serves: 4, steps: '', kid: '', tags: {}, ing: [blank(), blank(), blank()], photos: [] });
+const empty = () => ({ name: '', desc: '', time: '30', serves: 4, meal: 'dinner', steps: '', kid: '', tags: {}, ing: [blank(), blank(), blank()], photos: [] });
 // The app keeps amounts for 4 people; the form shows them for the recipe's own number.
 const round = q => String(Math.round(q * 100) / 100);
 // One of your recipes, as the form shows it.
 const toForm = r => {
   const serves = r.serves || 4;
   return {
-    name: r.name, desc: r.desc || '', time: String(r.time), serves, steps: r.steps || '', kid: r.kid || '',
+    name: r.name, desc: r.desc || '', time: String(r.time), serves, meal: mealOf(r), steps: r.steps || '', kid: r.kid || '',
     tags: Object.fromEntries(r.tags.map(k => [k, true])), photos: r.photos || [],
     ing: r.ing.map(([n, q, u, a, , f]) => ({ n, q: round(q * serves / 4), u, a: a || 'pantry', f: f || null })),
   };
@@ -178,6 +178,12 @@ export default function AddRecipe({ id, back }) {
       <Section icon="book" title={t('secDetails')}>
         <Field label={t('fName')} value={form.name} maxLength={LIMITS.nameMax} error={errors.name} onChangeText={v => update({ name: v }, 'name')} />
         <Field label={t('fTime')} value={form.time} keyboardType="number-pad" error={errors.time} onChangeText={v => update({ time: v.replace(/\D/g, '') }, 'time')} />
+        <View style={{ gap: 8 }}>
+          <T v="label" c="muted">{t('fMeal')}</T>
+          <Row gap={6} style={{ flexWrap: 'wrap' }}>
+            {MEALS.map(m => <Pill key={m} label={t('meal_' + m)} active={form.meal === m} onPress={() => update({ meal: m })} />)}
+          </Row>
+        </View>
         <View style={{ gap: 8 }}>
           <T v="label" c="muted">{t('fTags')}</T>
           <Row gap={6} style={{ flexWrap: 'wrap' }}>

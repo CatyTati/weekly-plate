@@ -1,12 +1,12 @@
-// Adds one recipe to a day: choose the week, then the day, and see what it replaces.
+// Adds one recipe to a day: choose the week, the meal, then the day, and see what it replaces.
 import React, { useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore } from '../store';
 import { useNav } from '../nav';
-import { dayName, keyToDate, num, pick, thisSunday, weekKey, weekRangeLabel } from '../logic';
+import { MEALS, dayName, keyToDate, mealOf, mealPlan, num, pick, thisSunday, weekKey, weekRangeLabel } from '../logic';
 import { color } from '../theme';
-import { Avatar, Button, Row, T } from '../components/ui';
+import { Avatar, Button, Pill, Row, T } from '../components/ui';
 
 const DAYS = [0, 1, 2, 3, 4, 5, 6];
 
@@ -30,7 +30,7 @@ export function SourceInfo({ cook, whole }) {
 }
 
 export default function AddToWeekSheet({ id, cook, onClose }) {
-  const { state, t, rtl, byId, setDay } = useStore();
+  const { state, t, rtl, byId, setMeal } = useStore();
   const { showWeek } = useNav();
   const insets = useSafeAreaInsets();
   const lang = state.lang;
@@ -40,19 +40,22 @@ export default function AddToWeekSheet({ id, cook, onClose }) {
     return { i, key: weekKey(start) };
   });
   const [week, setWeek] = useState(weeks[0].key);
+  const [meal, setMealChoice] = useState(() => mealOf(byId(id)));
   const locked = d => week === weeks[0].key && d < today;
-  const plan = state.weeks[week] || [];
+  const plan = mealPlan(state, week, meal);
   const firstFree = DAYS.find(d => !locked(d) && !plan[d]);
   const [day, setDayChoice] = useState(firstFree ?? today);
   const weekName = i => (i === 0 ? t('thisWeek') : i === 1 ? t('nextWeek') : t('inWeeks', { n: num(i, lang) }));
 
-  const chooseWeek = key => {
+  // A new week or meal starts on its first free day.
+  const choose = (key, m) => {
     setWeek(key);
-    const p = state.weeks[key] || [];
+    setMealChoice(m);
+    const p = mealPlan(state, key, m);
     const open = DAYS.filter(d => key !== weeks[0].key || d >= today);
     setDayChoice(open.find(d => !p[d]) ?? open[0]);
   };
-  const save = () => { setDay(day, id, week); onClose(); showWeek?.(week); };
+  const save = () => { setMeal(meal, day, id, week); onClose(); showWeek?.(week); };
 
   return (
     <Modal visible transparent animationType="slide" onRequestClose={onClose}>
@@ -68,13 +71,18 @@ export default function AddToWeekSheet({ id, cook, onClose }) {
             {weeks.map(({ i, key }) => {
               const on = key === week;
               return (
-                <Pressable key={key} onPress={() => chooseWeek(key)} accessibilityRole="radio" accessibilityState={{ checked: on }}
+                <Pressable key={key} onPress={() => choose(key, meal)} accessibilityRole="radio" accessibilityState={{ checked: on }}
                   style={{ paddingVertical: 8, paddingHorizontal: 12, borderRadius: 14, borderWidth: 2, borderColor: on ? color.accent : color.line, backgroundColor: on ? color.accentSoft : color.surface }}>
                   <T v="label" c={on ? 'accent' : 'ink'}>{weekName(i)}</T>
                   <T v="label" c="muted">{weekRangeLabel(keyToDate(key), lang)}</T>
                 </Pressable>
               );
             })}
+          </Row>
+
+          <T v="bodyStrong">{t('whichMeal')}</T>
+          <Row gap={6} style={{ flexWrap: 'wrap' }}>
+            {MEALS.map(m => <Pill key={m} label={t('meal_' + m)} active={meal === m} onPress={() => choose(week, m)} />)}
           </Row>
 
           <T v="bodyStrong">{t('pickDay')}</T>

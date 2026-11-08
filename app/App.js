@@ -58,7 +58,7 @@ function Root() {
   else if (!state.onboarded) body = <Onboarding />;
   else if (picking) body = (
     <View style={{ flex: 1 }}>
-      <PickRecipe week={picking.params.week} day={picking.params.day} open={nav.open} back={nav.back} />
+      <PickRecipe week={picking.params.week} day={picking.params.day} meal={picking.params.meal} open={nav.open} back={nav.back} />
       {recipeView ? <View style={[StyleSheet.absoluteFill, { backgroundColor: color.bg }]}>{recipeView}</View> : null}
     </View>
   );

@@ -147,6 +147,7 @@ export function validateRecipe(form, existing, t) {
       steps, photos: (form.photos || []).slice(0, LIMITS.photos),
       kid: tags.includes('kids') && form.kid?.trim() ? form.kid.trim() : undefined,
       keep: tags.includes('prep') ? 3 : 0,
+      meal: MEALS.includes(form.meal) ? form.meal : 'dinner',
     },
   };
 }
@@ -176,6 +177,17 @@ export function weekKey(sunday = thisSunday()) {
   const pad = n => String(n).padStart(2, '0');
   return `${sunday.getFullYear()}-${pad(sunday.getMonth() + 1)}-${pad(sunday.getDate())}`;
 }
+/* ---------- meals ---------- */
+// A day of a week holds one dish of each meal. Dinner lives in `weeks` (as it always has);
+// the others in `meals`, by week and then by meal, 7 entries each, Sunday first.
+export const MEALS = ['breakfast', 'lunch', 'dinner', 'snack', 'dessert'];
+export const OTHER_MEALS = MEALS.filter(m => m !== 'dinner');
+export const mealOf = r => (r && MEALS.includes(r.meal) ? r.meal : 'dinner');
+/** A week's list for one meal: 7 recipe ids or nulls. */
+export const mealPlan = (state, key, meal) => (meal === 'dinner' ? state.weeks[key] : state.meals?.[key]?.[meal]) || [];
+/** Every dish planned in a week, all meals, once per time it's cooked. */
+export const weekDishIds = (state, key) => MEALS.flatMap(m => mealPlan(state, key, m)).filter(Boolean);
+
 export function keyToDate(key) {
   const [y, m, d] = key.split('-').map(Number);
   return new Date(y, m - 1, d);
@@ -234,5 +246,11 @@ export function mergeMine(local, server, thisWeek = weekKey()) {
     if ((local.weeks[key] || []).some(id => unsaved.has(id))) continue;
     weeks[key] = plan.map(id => (id && idOf[id]) || id);
   }
-  return { ...local, custom: [...custom, ...waiting], weeks, plan: weeks[thisWeek] || [] };
+  const meals = { ...(local.meals || {}) };
+  for (const [key, byMeal] of Object.entries(server.meals || {})) {
+    const mine = local.meals?.[key] || {};
+    if (Object.values(mine).some(list => list.some(id => unsaved.has(id)))) continue;
+    meals[key] = Object.fromEntries(Object.entries(byMeal).map(([m, list]) => [m, list.map(id => (id && idOf[id]) || id)]));
+  }
+  return { ...local, custom: [...custom, ...waiting], weeks, meals, plan: weeks[thisWeek] || [] };
 }

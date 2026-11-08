@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { Image, Modal, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore } from '../store';
-import { dayName, keyToDate, localeOf, num, pick, thisSunday, weekKey, weekRangeLabel } from '../logic';
-import { color, radius } from '../theme';
+import { MEALS, OTHER_MEALS, dayName, keyToDate, localeOf, mealPlan, num, pick, thisSunday, weekDishIds, weekKey, weekRangeLabel } from '../logic';
+import { color, font, radius } from '../theme';
 import { Button, Card, Header, Icon, RoundButton, Row, Screen, T } from '../components/ui';
 import FoodArt from '../components/FoodArt';
 
@@ -56,8 +56,8 @@ function WeekCalendar({ month, setMonth, selected, onPick }) {
 /** What the Week page shows. Kept in App so it survives opening a recipe. */
 export const initialWeekView = () => ({ week: weekKey(), month: shiftMonth(new Date(), 0), picking: false });
 
-/** What you can do with a planned dinner: change it or take it off the day. */
-function DayMenu({ day, recipe, onChange, onRemove, onClose }) {
+/** What you can do with a planned dish: change it or take it off the day. */
+function DayMenu({ day, meal, recipe, onChange, onRemove, onClose }) {
   const { state, t, rtl } = useStore();
   const insets = useSafeAreaInsets();
   return (
@@ -65,13 +65,34 @@ function DayMenu({ day, recipe, onChange, onRemove, onClose }) {
       <View style={{ flex: 1, justifyContent: 'flex-end', direction: rtl ? 'rtl' : 'ltr' }}>
         <Pressable style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.35)' }]} accessibilityLabel={t('close')} onPress={onClose} />
         <View style={{ backgroundColor: color.surface, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 22, paddingBottom: 22 + insets.bottom, gap: 10 }}>
-          <T v="label" c="muted">{dayName(day, state.lang)}</T>
+          <T v="label" c="muted">{dayName(day, state.lang)} · {t('meal_' + meal)}</T>
           <T v="title" numberOfLines={2}>{pick(recipe.name, state.lang)}</T>
           <Button icon="swap" label={t('changeRecipe')} onPress={onChange} style={{ marginTop: 6 }} />
           <Pressable onPress={onRemove} accessibilityRole="button" style={({ pressed }) => ({ flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center', paddingVertical: 15, borderRadius: radius.pill, backgroundColor: color.errorSoft, opacity: pressed ? 0.85 : 1 })}>
             <Icon name="trash" c="error" size={18} />
             <T v="bodyStrong" c="error">{t('removeFromDay')}</T>
           </Pressable>
+          <Pressable onPress={onClose} hitSlop={8} style={{ alignSelf: 'center', paddingTop: 6 }}><T v="bodyStrong" c="muted">{t('cancel')}</T></Pressable>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+/** Which meal to add to a day: the ones it doesn't have yet. */
+function MealChooser({ day, meals, onPick, onClose }) {
+  const { state, t, rtl } = useStore();
+  const insets = useSafeAreaInsets();
+  return (
+    <Modal visible transparent animationType="slide" onRequestClose={onClose}>
+      <View style={{ flex: 1, justifyContent: 'flex-end', direction: rtl ? 'rtl' : 'ltr' }}>
+        <Pressable style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.35)' }]} accessibilityLabel={t('close')} onPress={onClose} />
+        <View style={{ backgroundColor: color.surface, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 22, paddingBottom: 22 + insets.bottom, gap: 10 }}>
+          <T v="title">{t('addMealTitle', { d: dayName(day, state.lang) })}</T>
+          {/* Dinner, the usual choice, first and strongest; the rest in the order of the day. */}
+          {[...meals].sort((a, b) => (b === 'dinner') - (a === 'dinner')).map(m => (
+            <Button key={m} kind={m === 'dinner' ? 'primary' : 'secondary'} label={t('meal_' + m)} onPress={() => onPick(m)} />
+          ))}
           <Pressable onPress={onClose} hitSlop={8} style={{ alignSelf: 'center', paddingTop: 6 }}><T v="bodyStrong" c="muted">{t('cancel')}</T></Pressable>
         </View>
       </View>
@@ -99,12 +120,15 @@ export default function Week({ open, view, setView }) {
   const dishes = [0, 1, 2, 3, 4, 5, 6].map(d => byId(plan[d]));
   const hasPrep = week === now && state.modes.prep && dishes.some(r => r?.tags.includes('prep'));
   const range = weekRangeLabel(keyToDate(week), lang);
-  const choose = day => open('pick', { week, day });
+  const choose = (day, meal = 'dinner') => open('pick', { week, day, meal });
   // Past weeks, and days of this week before today, are history only.
   const locked = d => past || (week === now && d < new Date().getDay());
 
-  const { setDay } = useStore();
-  const [menu, setMenu] = useState(null); // day whose menu is open
+  const { setMeal } = useStore();
+  const [menu, setMenu] = useState(null); // { d, m }: the dish whose menu is open
+  const [adding, setAdding] = useState(null); // day a meal is being added to
+  const dishOf = (d, m) => byId(mealPlan(state, week, m)[d]);
+  const anyDish = weekDishIds(state, week).length > 0;
   const start = keyToDate(week);
   const dateOf = d => new Date(start.getFullYear(), start.getMonth(), start.getDate() + d);
   const todayIdx = week === now ? new Date().getDay() : -1;
@@ -131,7 +155,7 @@ export default function Week({ open, view, setView }) {
 
       {past ? (
         <Card>
-          <T c="muted">{dishes.some(Boolean) ? t('pastWeek') : t('noHistory')}</T>
+          <T c="muted">{anyDish ? t('pastWeek') : t('noHistory')}</T>
         </Card>
       ) : (
         <View style={{ gap: 6 }}>
@@ -144,57 +168,75 @@ export default function Week({ open, view, setView }) {
 
       {hasPrep ? <Button kind="secondary" icon="pot" label={t('openPrep')} onPress={() => open('prep')} /> : null}
 
-      {past && !dishes.some(Boolean) ? null : (
+      {past && !anyDish ? null : (
         <View style={{ gap: 10 }}>
-          {dishes.map((r, d) => {
+          {dishes.map((dinner, d) => {
             const date = dateOf(d);
             const isToday = d === todayIdx;
             const off = locked(d);
+            const others = OTHER_MEALS.filter(m => dishOf(d, m));
+            const free = MEALS.filter(m => !dishOf(d, m));
+            const hasAny = !!dinner || others.length > 0;
+            const label = others.length > 0; // name each meal once a day has more than dinner
+            const card = (r, m) => (
+              <Pressable key={m} onPress={() => open('recipe', { id: r.id, day: d })} accessibilityRole="button" accessibilityLabel={pick(r.name, lang)}>
+                <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, paddingHorizontal: 10,
+                  borderColor: isToday ? color.accent : color.edge, borderWidth: isToday ? 1.5 : 1 }}>
+                  <Thumb recipe={r} />
+                  <View style={{ flex: 1, gap: 4 }}>
+                    {label ? <T v="label" c="accent">{t('meal_' + m)}</T> : null}
+                    <T v="bodyStrong" numberOfLines={2}>{pick(r.name, lang)}</T>
+                    <Row gap={6}>
+                      <Icon name="clock" c="muted" size={14} />
+                      <T v="caption" c="muted">{r.time} {t('min')}</T>
+                    </Row>
+                    {state.modes.kids && r.kid ? <T v="caption" c="kids" numberOfLines={1}>{t('forKids')} {pick(r.kid, lang)}</T> : null}
+                  </View>
+                  {off ? null : <RoundButton icon="more" size={34} bg="bg" c="muted" label={t('dayOptions', { d: dayName(d, lang) })} onPress={() => setMenu({ d, m })} />}
+                </Card>
+              </Pressable>
+            );
             return (
-              <View key={d} style={{ flexDirection: 'row', gap: 10, alignItems: 'stretch', opacity: off && !r ? 0.55 : 1 }}>
+              <View key={d} style={{ flexDirection: 'row', gap: 10, alignItems: 'stretch', opacity: off && !dinner && !others.length ? 0.55 : 1 }}>
                 <View style={{ width: 56, alignItems: 'center', justifyContent: 'center', borderRadius: 18, paddingVertical: 10,
                   backgroundColor: isToday ? color.accent : color.accentSoft }}>
                   <T v="label" c={isToday ? 'onAccent' : 'accent'} center>{isToday ? t('today') : dayName(d, lang)}</T>
                   <T v="title" c={isToday ? 'onAccent' : 'ink'} center>{num(date.getDate(), lang)}</T>
                 </View>
-                {r ? (
-                  <Pressable onPress={() => open('recipe', { id: r.id, day: d })} style={{ flex: 1 }} accessibilityRole="button" accessibilityLabel={pick(r.name, lang)}>
-                    <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, paddingHorizontal: 10,
-                      borderColor: isToday ? color.accent : color.edge, borderWidth: isToday ? 1.5 : 1 }}>
-                      <Thumb recipe={r} />
-                      <View style={{ flex: 1, gap: 4 }}>
-                        <T v="bodyStrong" numberOfLines={2}>{pick(r.name, lang)}</T>
-                        <Row gap={6}>
-                          <Icon name="clock" c="muted" size={14} />
-                          <T v="caption" c="muted">{r.time} {t('min')}</T>
-                        </Row>
-                        {state.modes.kids && r.kid ? <T v="caption" c="kids" numberOfLines={1}>{t('forKids')} {pick(r.kid, lang)}</T> : null}
+                <View style={{ flex: 1, gap: 6 }}>
+                  {MEALS.map(m => {
+                    if (m !== 'dinner') { const r = dishOf(d, m); return r ? card(r, m) : null; }
+                    if (dinner) return card(dinner, 'dinner');
+                    return off && !others.length ? (
+                      <View key={m} style={{ flex: 1, justifyContent: 'center', paddingHorizontal: 14, borderRadius: radius.card, backgroundColor: color.surface, borderWidth: 1, borderColor: color.edge }}>
+                        <T c="muted">{t('noDinner')}</T>
                       </View>
-                      {off ? null : <RoundButton icon="more" size={34} bg="bg" c="muted" label={t('dayOptions', { d: dayName(d, lang) })} onPress={() => setMenu(d)} />}
-                    </Card>
-                  </Pressable>
-                ) : off ? (
-                  <View style={{ flex: 1, justifyContent: 'center', paddingHorizontal: 14, borderRadius: radius.card, backgroundColor: color.surface, borderWidth: 1, borderColor: color.edge }}>
-                    <T c="muted">{t('noDinner')}</T>
-                  </View>
-                ) : (
-                  <Pressable onPress={() => choose(d)} accessibilityRole="button"
-                    style={({ pressed }) => ({ flex: 1, minHeight: 72, flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center', borderRadius: radius.card,
-                      borderWidth: 1.5, borderStyle: 'dashed', borderColor: color.accent, backgroundColor: pressed ? color.accentSoft : 'transparent' })}>
-                    <Icon name="plus" c="accent" size={18} />
-                    <T v="bodyStrong" c="accent">{t('addDinner')}</T>
-                  </Pressable>
-                )}
+                    ) : null;
+                  })}
+                  {/* One way to add, for every meal: a full box on an empty day, a slim one under dishes. */}
+                  {!off && free.length ? (
+                    <Pressable onPress={() => setAdding(d)} accessibilityRole="button"
+                      style={({ pressed }) => ({ flex: hasAny ? 0 : 1, minHeight: hasAny ? 44 : 72, flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center',
+                        borderRadius: radius.card, borderWidth: 1.5, borderStyle: 'dashed', borderColor: color.accent, backgroundColor: pressed ? color.accentSoft : 'transparent' })}>
+                      <Icon name="plus" c="accent" size={hasAny ? 15 : 18} />
+                      <T v={hasAny ? 'label' : 'bodyStrong'} c="accent" style={hasAny ? { fontFamily: font.medium } : null}>{t('addMeal')}</T>
+                    </Pressable>
+                  ) : null}
+                </View>
               </View>
             );
           })}
         </View>
       )}
 
-      {menu !== null && dishes[menu] ? (
-        <DayMenu day={menu} recipe={dishes[menu]} onClose={() => setMenu(null)}
-          onChange={() => { const d = menu; setMenu(null); choose(d); }}
-          onRemove={() => { setDay(menu, null, week); setMenu(null); }} />
+      {menu && dishOf(menu.d, menu.m) ? (
+        <DayMenu day={menu.d} meal={menu.m} recipe={dishOf(menu.d, menu.m)} onClose={() => setMenu(null)}
+          onChange={() => { const { d, m } = menu; setMenu(null); choose(d, m); }}
+          onRemove={() => { setMeal(menu.m, menu.d, null, week); setMenu(null); }} />
+      ) : null}
+      {adding !== null ? (
+        <MealChooser day={adding} meals={MEALS.filter(m => !dishOf(adding, m))} onClose={() => setAdding(null)}
+          onPick={m => { const d = adding; setAdding(null); choose(d, m); }} />
       ) : null}
     </Screen>
   );

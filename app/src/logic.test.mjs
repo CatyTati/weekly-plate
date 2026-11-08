@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { makeT, mergeMine, planWeek, swapDay, shoppingList, fmtQty, validateRecipe, prepPlan, cost, money, validateSignIn, validateSignUp, greetingKey, timeAgo, firstName } from './logic.js';
+import { makeT, mergeMine, mealOf, mealPlan, weekDishIds, planWeek, swapDay, shoppingList, fmtQty, validateRecipe, prepPlan, cost, money, validateSignIn, validateSignUp, greetingKey, timeAgo, firstName } from './logic.js';
 
 const seeded = (seed = 1) => () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
 const t = makeT('en');
@@ -167,4 +167,36 @@ test('the database wins on sign-in, except changes not saved yet', () => {
   assert.deepEqual(m.weeks['2026-11-01'].slice(0, 2), ['c1', 'c4']); // uses a recipe not saved yet: kept
   assert.deepEqual(m.weeks['2026-11-08'].slice(0, 2), ['u5', 'c1']); // database ids become this phone's ids
   assert.deepEqual(m.plan, m.weeks['2026-11-08']);
+});
+
+test('a day holds a dish for each meal, and the week lists them all', () => {
+  const state = {
+    weeks: { w: ['a', null, 'b', null, null, null, null] },
+    meals: { w: { breakfast: ['c', null, null, null, null, null, null], dessert: [null, 'a', null, null, null, null, null] } },
+  };
+  assert.deepEqual(mealPlan(state, 'w', 'dinner'), state.weeks.w);
+  assert.deepEqual(mealPlan(state, 'w', 'breakfast'), state.meals.w.breakfast);
+  assert.deepEqual(mealPlan(state, 'w', 'lunch'), []);
+  assert.deepEqual(mealPlan({ weeks: {} }, 'w', 'snack'), []);
+  assert.deepEqual(weekDishIds(state, 'w').sort(), ['a', 'a', 'b', 'c']); // cooked twice: counted twice
+  assert.equal(mealOf({ meal: 'snack' }), 'snack');
+  assert.equal(mealOf({}), 'dinner'); // recipes from before meals existed
+  assert.equal(mealOf({ meal: 'brunch' }), 'dinner');
+});
+
+test('a new recipe keeps the meal chosen in the form', () => {
+  const form = { name: 'Pancakes', time: '20', steps: 'Mix it all and fry them until golden.', ing: [{ n: 'Flour', q: '1', u: 'כוס', a: 'pantry' }, { n: 'Egg', q: '2', u: 'יח׳', a: 'dairy' }] };
+  assert.equal(validateRecipe({ ...form, meal: 'breakfast' }, [], t).value.meal, 'breakfast');
+  assert.equal(validateRecipe(form, [], t).value.meal, 'dinner');
+});
+
+test('other meals merge like dinners, and wait while they use a recipe not saved yet', () => {
+  const r = (id, cloud) => ({ id, cloud, name: id, ing: [], tags: [], photos: [], photosSaved: '[]' });
+  const local = { custom: [r('c1', 'u1'), r('c4', undefined)], weeks: {},
+    meals: { a: { lunch: ['c4', null, null, null, null, null, null] }, b: { lunch: [null, null, null, null, null, null, null] } } };
+  const server = { recipes: [r('u1', 'u1')], weeks: {},
+    meals: { a: { lunch: ['u1', null, null, null, null, null, null] }, b: { breakfast: ['u1', null, null, null, null, null, null] } } };
+  const m = mergeMine(local, server, 'b');
+  assert.deepEqual(m.meals.a.lunch.slice(0, 1), ['c4']);
+  assert.deepEqual(m.meals.b.breakfast.slice(0, 1), ['c1']);
 });
