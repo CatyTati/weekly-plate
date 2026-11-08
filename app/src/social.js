@@ -298,6 +298,26 @@ export async function photosOf(owner) {
   return data.map(r => ({ id: r.recipe_id, photo: r.storage_path ? photoUrl(r.storage_path) : null }));
 }
 
+/**
+ * Other people's dishes for the search tab: random ones when `q` is empty, else those whose
+ * name matches or is close. A private account's dish is `locked` (photo and cook only) until
+ * your follow is approved.
+ */
+export async function explore(q = '') {
+  if (isDemo) return [];
+  const { data, error } = await supabase.rpc('explore', { q: q.trim() });
+  if (error) throw error;
+  return data.map(r => ({ id: r.id, owner: r.owner_id, ownerName: r.owner_name || '', locked: r.locked,
+    name: r.name || '', time: r.prep_minutes, photo: r.photo ? photoUrl(r.photo) : null }));
+}
+
+/** One recipe you may read, whole, for opening it from search. */
+export async function recipeById(id, ownerName) {
+  const { data, error } = await supabase.from('recipes').select('*, recipe_ingredients(*), recipe_photos(*)').eq('id', id).single();
+  if (error) throw error;
+  return { ...fromRow(data), ownerName };
+}
+
 /* ---------- weekly plans ---------- */
 
 /** Saves a week. `days` has 7 entries: a recipe's database id, a built-in id, or null. */

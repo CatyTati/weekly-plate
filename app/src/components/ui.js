@@ -262,7 +262,7 @@ export function CopiedNote({ recipe }) {
 
 export function TabBar({ tab, onTab }) {
   const { t } = useStore();
-  const tabs = [['home', 'home'], ['week', 'tab_week'], ['feed', 'feed'], ['shop', 'tab_shop']];
+  const tabs = [['home', 'home'], ['week', 'tab_week'], ['feed', 'feed'], ['search', 'tab_search'], ['shop', 'tab_shop']];
   return (
     <SafeAreaView edges={['bottom']} style={s.tabbar}>
       <View style={s.row}>
@@ -270,7 +270,7 @@ export function TabBar({ tab, onTab }) {
           const on = k === tab;
           return (
             <Pressable key={k} accessibilityRole="tab" accessibilityState={{ selected: on }} onPress={() => onTab(k)} style={s.tab}>
-              <View style={{ paddingHorizontal: 18, paddingVertical: 4, borderRadius: radius.pill, backgroundColor: on ? color.accentSoft : 'transparent' }}>
+              <View style={{ paddingHorizontal: 14, paddingVertical: 4, borderRadius: radius.pill, backgroundColor: on ? color.accentSoft : 'transparent' }}>
                 <Icon name={k} c={on ? 'accent' : 'muted'} size={22} w={on ? 2.2 : 1.8} />
               </View>
               <T v="label" c={on ? 'accent' : 'muted'} center style={on ? { fontFamily: font.medium } : null}>{t(label)}</T>

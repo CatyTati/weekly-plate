@@ -12,6 +12,7 @@ import Onboarding from './src/screens/Onboarding';
 import Home from './src/screens/Home';
 import Week, { initialWeekView } from './src/screens/Week';
 import Feed from './src/screens/Feed';
+import Search from './src/screens/Search';
 import Shop from './src/screens/Shop';
 import Prep from './src/screens/Prep';
 import Recipes, { PickRecipe } from './src/screens/Recipes';
@@ -71,6 +72,7 @@ function Root() {
   else if (view === 'home') body = <Home />;
   else if (view === 'week') body = <Week open={nav.open} view={weekView} setView={setWeekView} />;
   else if (view === 'feed') body = <Feed />;
+  else if (view === 'search') body = <Search />;
   else if (view === 'shop') body = <Shop />;
   else if (view === 'recipes') body = <Recipes open={nav.open} />;
   else if (view === 'community') body = <Community />;
