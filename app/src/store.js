@@ -2,7 +2,7 @@
 // Your own recipes and weekly plans are also saved to Supabase, so followers can see them.
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { OTHER_MEALS, makeT, isRtl, mealOf, mergeMine, planWeek, swapDay as swap, weekKey } from './logic';
+import { OTHER_MEALS, makeT, isRtl, mealsOf, mergeMine, planWeek, swapDay as swap, weekKey } from './logic';
 import * as Linking from 'expo-linking';
 import { currentUser, handleAuthLink, isDemo, isRecoveryLink, onAuthChange, signOut } from './auth';
 import { deleteCloudRecipe, loadMine, noteCopy, pushMeals, pushRecipe, pushWeek, syncPhotos, syncProfileName, updateCloudRecipe } from './social';
@@ -26,7 +26,7 @@ const DEFAULT = {
 };
 
 const Ctx = createContext(null);
-const dinners = custom => custom.filter(r => mealOf(r) === 'dinner'); // what an automatic plan picks from
+const dinners = custom => custom.filter(r => mealsOf(r).includes('dinner')); // what an automatic plan picks from
 const keyFor = id => (id ? `${KEY}:${id}` : KEY);
 
 // Saves a week's plan. `plan` always follows the week we are in.

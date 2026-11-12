@@ -2,22 +2,25 @@ import React, { useRef, useState } from 'react';
 import { Image, Pressable, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useStore } from '../store';
-import { LIMITS, MEALS, TAG_KEYS, U, UNITS, fmtQty, mealOf, unitName, validateRecipe } from '../logic';
+import { LIMITS, MEALS, TAG_KEYS, U, UNITS, fmtQty, mealsOf, num, unitName, validateRecipe } from '../logic';
 import { foodName, gramsOf, looksTooMuch, matchFood } from '../nutrition';
 import { useFoods } from '../foods';
+import { isDemo } from '../auth';
+import { File } from 'expo-file-system';
+import { PDF_MAX_MB, SHOTS_MAX, recipeFromFile } from '../social';
 import { FoodHint, linkRow } from '../components/FoodPicker';
 import { color, font } from '../theme';
 import { Button, Card, ConfirmDialog, Field, Icon, Pill, Row, RoundButton, Screen, Stepper, T } from '../components/ui';
 
 const blank = () => ({ n: '', q: '', u: U, a: 'pantry', f: null }); // f: the food it's linked to
-const empty = () => ({ name: '', desc: '', time: '30', serves: 4, meal: 'dinner', steps: '', kid: '', tags: {}, ing: [blank(), blank(), blank()], photos: [] });
+const empty = () => ({ name: '', desc: '', time: '30', serves: 4, meals: ['dinner'], steps: '', kid: '', tags: {}, ing: [blank(), blank(), blank()], photos: [] });
 // The app keeps amounts for 4 people; the form shows them for the recipe's own number.
 const round = q => String(Math.round(q * 100) / 100);
 // One of your recipes, as the form shows it.
 const toForm = r => {
   const serves = r.serves || 4;
   return {
-    name: r.name, desc: r.desc || '', time: String(r.time), serves, meal: mealOf(r), steps: r.steps || '', kid: r.kid || '',
+    name: r.name, desc: r.desc || '', time: String(r.time), serves, meals: mealsOf(r), steps: r.steps || '', kid: r.kid || '',
     tags: Object.fromEntries(r.tags.map(k => [k, true])), photos: r.photos || [],
     ing: r.ing.map(([n, q, u, a, , f]) => ({ n, q: round(q * serves / 4), u, a: a || 'pantry', f: f || null })),
   };
@@ -69,9 +72,52 @@ export default function AddRecipe({ id, back }) {
   const { index, byId: foodById } = useFoods();
   const scroll = useRef(null);
   const picking = useRef(false); // a second tap while the picker opens would stack another picker
+  const [reading, setReading] = useState(null); // { busy, note, error } while filling the form from a screenshot
 
   const update = (patch, clear) => { setForm(f => ({ ...f, ...patch })); if (clear) setErrors(e => { const n = { ...e }; delete n[clear]; return n; }); };
   const setRow = (i, patch) => update({ ing: form.ing.map((r, j) => (j === i ? { ...r, ...patch } : r)) }, 'ing.' + i);
+
+  // Fills the form from a screenshot or a PDF of a recipe. Neither is kept or added as a photo.
+  async function fillFrom(kind) {
+    if (picking.current || reading?.busy) return;
+    picking.current = true;
+    let file;
+    try {
+      if (kind === 'pdf') {
+        const res = await File.pickFileAsync({ mimeTypes: 'application/pdf' });
+        if (res.canceled) return;
+        console.log(`PDF picked: ${((res.result.size || 0) / 1024 / 1024).toFixed(2)} MB`);
+        const mb = (res.result.size || 0) / 1024 / 1024;
+        if (mb > PDF_MAX_MB) { setReading({ error: t('readPdfTooBig', { n: PDF_MAX_MB, s: num(Math.round(mb * 10) / 10, lang) }) }); return; }
+        setReading({ busy: true });
+        file = { pdf: await res.result.base64() };
+      } else {
+        // Several screenshots of one long recipe, in the order they were picked; one fill.
+        const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 1,
+          allowsMultipleSelection: true, selectionLimit: SHOTS_MAX, orderedSelection: true });
+        if (res.canceled) return;
+        file = { images: res.assets.map(a => a.uri) };
+      }
+    } catch (e) {
+      console.warn('Choosing the file failed:', e?.message || e);
+      setReading({ error: t('readFailed') });
+      return;
+    } finally {
+      picking.current = false;
+    }
+    setReading({ busy: true });
+    try {
+      const { recipe: r, left } = await recipeFromFile(file, lang);
+      const ing = r.ing.map(i => ({ n: i.n, q: round(i.q), u: i.u, a: matchFood(i.n, index)?.aisle || 'pantry', f: null }));
+      setForm(f => ({ ...f, name: r.name, desc: r.desc, time: String(r.time), serves: r.serves, meals: r.meals, steps: r.steps, ing: ing.length ? ing : f.ing }));
+      setErrors({});
+      setReading({ note: left == null ? t('readDoneNoLimit') : t('readDone', { n: left }) });
+    } catch (e) {
+      console.warn('Reading the recipe failed:', e?.message || e);
+      const key = { limit: 'readLimit', not_a_recipe: 'readNoRecipe', refused: 'readNoRecipe', pdf_too_big: 'readPdfTooBig', pdf_too_long: 'readPdfTooLong' }[e.message] || 'readFailed';
+      setReading({ error: t(key, { n: e.message === 'pdf_too_big' ? PDF_MAX_MB : e.message === 'pdf_too_long' ? 5 : e.limit, s: `${PDF_MAX_MB}+` }) });
+    }
+  }
 
   async function pickPhotos() {
     setPhotoError('');
@@ -153,6 +199,26 @@ export default function AddRecipe({ id, back }) {
         </Row>
       ) : null}
 
+      {editing || isDemo ? null : (
+        <View style={{ backgroundColor: color.accentSoft, borderRadius: 20, padding: 14, gap: 8 }}>
+          <Row gap={10} style={{ alignItems: 'flex-start' }}>
+            <Icon name="camera" c="accent" size={20} />
+            <View style={{ flex: 1, gap: 2 }}>
+              <T v="bodyStrong" c="accent">{t('readTitle')}</T>
+              <T v="caption" c="muted">{t('readHint')}</T>
+            </View>
+          </Row>
+          {reading?.busy ? <Button kind="secondary" label={t('readBusy')} disabled /> : (
+            <Row gap={8}>
+              <Button kind={reading?.note ? 'secondary' : 'primary'} icon="camera" label={t('readBtn')} style={{ flex: 1 }} onPress={() => fillFrom('image')} />
+              <Button kind="secondary" icon="book" label={t('readPdfBtn')} style={{ flex: 1 }} onPress={() => fillFrom('pdf')} />
+            </Row>
+          )}
+          {reading?.note ? <T v="caption" c="accent">{reading.note}</T> : null}
+          {reading?.error ? <T v="caption" c="error">{reading.error}</T> : null}
+        </View>
+      )}
+
       <Section icon="camera" title={t('fPhotos', { m: LIMITS.photos })}>
         <Row gap={10}>
           {form.photos.map((uri, i) => (
@@ -181,7 +247,12 @@ export default function AddRecipe({ id, back }) {
         <View style={{ gap: 8 }}>
           <T v="label" c="muted">{t('fMeal')}</T>
           <Row gap={6} style={{ flexWrap: 'wrap' }}>
-            {MEALS.map(m => <Pill key={m} label={t('meal_' + m)} active={form.meal === m} onPress={() => update({ meal: m })} />)}
+            {/* Any number of meals, but never none: the last one stays on. */}
+            {MEALS.map(m => {
+              const on = form.meals.includes(m);
+              return <Pill key={m} label={t('meal_' + m)} active={on}
+                onPress={() => (on && form.meals.length === 1 ? null : update({ meals: on ? form.meals.filter(x => x !== m) : [...form.meals, m] }))} />;
+            })}
           </Row>
         </View>
         <View style={{ gap: 8 }}>

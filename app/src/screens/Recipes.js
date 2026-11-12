@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Modal, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore } from '../store';
-import { MEALS, TAG_KEYS, cost, dayName, hasPrice, mealOf, money, num, pick } from '../logic';
+import { MEALS, TAG_KEYS, cost, dayName, hasPrice, mealsOf, money, num, pick } from '../logic';
 import { color, font } from '../theme';
 import { Button, Card, CopiedNote, Field, Header, Icon, Pill, Row, RoundButton, Screen, T, Tag } from '../components/ui';
 import PhotoSlider from '../components/PhotoSlider';
@@ -61,7 +61,7 @@ export function RecipeList({ open, onPick, showAdd = true, meal: firstMeal = 'al
   const [q, setQ] = useState('');
   const reactions = useReactions(onPick ? [] : recipes.map(r => r.cloud));
   // Newest first: recipes are kept in the order they were added.
-  const list = [...recipes].reverse().filter(r => (meal === 'all' || mealOf(r) === meal) && (filter === 'all' || r.tags.includes(filter))
+  const list = [...recipes].reverse().filter(r => (meal === 'all' || mealsOf(r).includes(meal)) && (filter === 'all' || r.tags.includes(filter))
     && (!q || pick(r.name, lang).toLowerCase().includes(q.toLowerCase())));
   return (
     <>

@@ -6,6 +6,7 @@
 import { isDemo, supabase } from './auth';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { UNIT_T } from './data.js';
+import { mealsOf } from './logic';
 
 const NAME_MAX = 40;
 const UNIT_CODE = UNIT_T.en; // Hebrew unit -> code saved in the database
@@ -112,14 +113,14 @@ export async function removeFollower(me, id) {
 
 const toRow = r => ({
   name: r.name, prep_minutes: r.time, method: r.steps, tags: r.tags,
-  kid_note: r.kid || null, keeps_days: r.keep || null, cook_method: r.m || 'stove', is_public: true, meal: r.meal || 'dinner',
+  kid_note: r.kid || null, keeps_days: r.keep || null, cook_method: r.m || 'stove', is_public: true, meals: mealsOf(r),
   ingredients: r.ing.map(([name, qty, unit, aisle, , food]) => ({ name, qty, unit: UNIT_CODE[unit] || 'pcs', aisle, food_id: food || null })),
 });
 
 const fromRow = row => ({
   id: row.id, cloud: row.id, owner: row.owner_id, custom: true, created: row.created_at,
   name: row.name, time: row.prep_minutes, m: row.cook_method, tags: row.tags,
-  kid: row.kid_note || undefined, keep: row.keeps_days || 0, steps: row.method, desc: row.description || '', meal: row.meal || 'dinner',
+  kid: row.kid_note || undefined, keep: row.keeps_days || 0, steps: row.method, desc: row.description || '', meals: mealsOf(row),
   ing: [...(row.recipe_ingredients || [])].sort((a, b) => a.position - b.position)
     .map(i => [i.name, Number(i.qty), UNIT_FROM_CODE[i.unit] || i.unit, i.aisle, 0, i.food_id || null]),
   photos: [...(row.recipe_photos || [])].sort((a, b) => a.position - b.position).map(p => photoUrl(p.storage_path)),
@@ -324,6 +325,43 @@ export async function recipeById(id, ownerName) {
   const { data, error } = await supabase.from('recipes').select('*, recipe_ingredients(*), recipe_photos(*)').eq('id', id).single();
   if (error) throw error;
   return { ...fromRow(data), ownerName };
+}
+
+/* ---------- a recipe from a screenshot or a PDF ---------- */
+
+export const PDF_MAX_MB = 5;
+export const SHOTS_MAX = 4; // screenshots of one recipe, read together
+
+/**
+ * Reads a recipe from screenshots or a short PDF (the recipe-from-image function asks Claude).
+ * `file` is { images: [uri, …] } (parts of one recipe, in order) or { pdf: base64 }. Returns its fields for the form, amounts for
+ * `serves` people and units as the app writes them, and how many more can be read today (null:
+ * no limit). Throws an Error whose message is the reason: limit, not_a_recipe, refused,
+ * pdf_too_big, pdf_too_long, or anything else for a failure on the way.
+ */
+export async function recipeFromFile(file, lang) {
+  let body;
+  if (file.pdf) body = { pdf: file.pdf, lang };
+  else {
+    const images = await Promise.all(file.images.slice(0, SHOTS_MAX).map(uri => ImageManipulator.manipulateAsync(uri, [{ resize: { width: 1080 } }],
+      { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG, base64: true }).then(img => img.base64)));
+    body = { images, lang };
+  }
+  const { data, error } = await supabase.functions.invoke('recipe-from-image', { body });
+  if (error) {
+    const body = await error.context?.json?.().catch(() => null);
+    throw Object.assign(new Error(body?.error || 'failed'), { limit: body?.limit, premium: body?.premium });
+  }
+  const r = data.recipe;
+  return {
+    left: data.left,
+    recipe: {
+      name: r.name.trim().slice(0, NAME_MAX), desc: (r.description || '').trim().slice(0, 160),
+      time: Math.min(240, Math.max(5, Math.round(r.minutes) || 30)), serves: Math.min(12, Math.max(1, Math.round(r.serves) || 4)),
+      meals: [r.meal], steps: r.steps.map(x => x.trim()).filter(Boolean).join('\n'),
+      ing: r.ingredients.slice(0, 30).map(i => ({ n: i.name.trim(), q: i.qty, u: UNIT_FROM_CODE[i.unit] || UNIT_FROM_CODE.pcs })),
+    },
+  };
 }
 
 /* ---------- weekly plans ---------- */

@@ -147,7 +147,7 @@ export function validateRecipe(form, existing, t) {
       steps, photos: (form.photos || []).slice(0, LIMITS.photos),
       kid: tags.includes('kids') && form.kid?.trim() ? form.kid.trim() : undefined,
       keep: tags.includes('prep') ? 3 : 0,
-      meal: MEALS.includes(form.meal) ? form.meal : 'dinner',
+      meals: mealsOf(form),
     },
   };
 }
@@ -182,7 +182,14 @@ export function weekKey(sunday = thisSunday()) {
 // the others in `meals`, by week and then by meal, 7 entries each, Sunday first.
 export const MEALS = ['breakfast', 'lunch', 'dinner', 'snack', 'dessert'];
 export const OTHER_MEALS = MEALS.filter(m => m !== 'dinner');
-export const mealOf = r => (r && MEALS.includes(r.meal) ? r.meal : 'dinner');
+/** The meals a recipe suits, in the order of the day; dinner for recipes from before meals existed. */
+export function mealsOf(r) {
+  const picked = Array.isArray(r?.meals) ? r.meals : r?.meal ? [r.meal] : [];
+  const list = MEALS.filter(m => picked.includes(m));
+  return list.length ? list : ['dinner'];
+}
+/** The meal a recipe is planned for first: dinner when it suits dinner, else its first meal. */
+export const mealOf = r => { const list = mealsOf(r); return list.includes('dinner') ? 'dinner' : list[0]; };
 /** A week's list for one meal: 7 recipe ids or nulls. */
 export const mealPlan = (state, key, meal) => (meal === 'dinner' ? state.weeks[key] : state.meals?.[key]?.[meal]) || [];
 /** Every dish planned in a week, all meals, once per time it's cooked. */
