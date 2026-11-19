@@ -6,10 +6,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Keyboard, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { color, font, onThemeChange, radius, shadow, tagColor, type } from '../theme';
 import { useStore } from '../store';
-import { useNav } from '../nav';
+import { useHasTabBar, useNav } from '../nav';
 
 export function T({ v = 'body', c = 'ink', center, style, children, ...rest }) {
   const { rtl } = useStore();
@@ -81,6 +81,12 @@ export function Screen({ children, scroll = true, header, footer, scrollRef, ref
   const own = useRef(null);
   const ref = scrollRef || own;
   const offset = useRef(0); // how far the page is scrolled
+  // Without a tab bar, keep the bottom of the screen clear of the system navigation bar
+  // (Android draws the app edge-to-edge, so it would otherwise cover and swallow taps).
+  const hasTabBar = useHasTabBar();
+  const insets = useSafeAreaInsets();
+  const bottom = hasTabBar ? 0 : insets.bottom;
+  const padEnd = !footer && bottom ? { paddingBottom: s.content.paddingBottom + bottom } : null;
   // When the keyboard opens, the page gets shorter. Scroll so the field being typed in is in view.
   useEffect(() => {
     if (!scroll) return undefined;
@@ -107,12 +113,12 @@ export function Screen({ children, scroll = true, header, footer, scrollRef, ref
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <SafeAreaView edges={['top']} style={{ flex: 1 }}>
           {header ? <View style={s.header}>{header}</View> : null}
-          <Body ref={scroll ? ref : undefined} style={{ flex: 1 }} contentContainerStyle={scroll ? s.content : undefined}
+          <Body ref={scroll ? ref : undefined} style={{ flex: 1 }} contentContainerStyle={scroll ? [s.content, padEnd] : undefined}
             keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive" refreshControl={scroll ? refreshControl : undefined}
             onScroll={scroll ? e => { offset.current = e.nativeEvent.contentOffset.y; } : undefined} scrollEventThrottle={16}>
-            {scroll ? children : <View style={[s.content, { flex: 1 }]}>{children}</View>}
+            {scroll ? children : <View style={[s.content, { flex: 1 }, padEnd]}>{children}</View>}
           </Body>
-          {footer ? <View style={s.footer}>{footer}</View> : null}
+          {footer ? <View style={[s.footer, bottom ? { paddingBottom: s.footer.paddingBottom + bottom } : null]}>{footer}</View> : null}
         </SafeAreaView>
       </KeyboardAvoidingView>
     </View>
