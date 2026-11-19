@@ -11,7 +11,8 @@
       "bundleIdentifier": "com.catytati.weeklyplate",
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "Add photos to your recipes."
-      }
+      },
+      "usesAppleSignIn": true
     },
     "android": {
       "package": "com.catytati.weeklyplate"
@@ -22,7 +23,8 @@
         {
           "photosPermission": "Add photos to your recipes."
         }
-      ]
+      ],
+      "expo-apple-authentication"
     ],
     "scheme": "weeklyplate"
   }
