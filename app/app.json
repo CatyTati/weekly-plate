@@ -15,17 +15,27 @@
       "usesAppleSignIn": true
     },
     "android": {
-      "package": "com.catytati.weeklyplate"
+      "package": "com.catytati.weeklyplate",
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "plugins": [
       [
         "expo-image-picker",
         {
-          "photosPermission": "Add photos to your recipes."
+          "photosPermission": "Add photos to your recipes.",
+          "microphonePermission": false
         }
       ],
       "expo-apple-authentication"
     ],
-    "scheme": "weeklyplate"
+    "scheme": "weeklyplate",
+    "extra": {
+      "eas": {
+        "projectId": "8bbe0e1b-e706-495f-bdfb-3ea3faa341cc"
+      }
+    },
+    "owner": "weekly-plate"
   }
 }
