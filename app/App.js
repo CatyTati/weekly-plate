@@ -4,7 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useFonts, Rubik_300Light, Rubik_400Regular, Rubik_500Medium } from '@expo-google-fonts/rubik';
 import { StoreProvider, useStore } from './src/store';
-import { NavCtx, MAIN_TABS } from './src/nav';
+import { NavCtx, MAIN_TABS, TabBarCtx } from './src/nav';
 import { color } from './src/theme';
 import { TabBar } from './src/components/ui';
 import Auth from './src/screens/Auth';
@@ -54,13 +54,14 @@ function Root() {
   else body = <Settings />;
 
   const signedInApp = user && state.onboarded;
+  const showTabBar = !!(signedInApp && !top);
   return (
     // `direction` mirrors every row for Hebrew without restarting the app.
     <NavCtx.Provider value={signedInApp ? nav : {}}>
       <View style={{ flex: 1, backgroundColor: color.bg, direction: rtl ? 'rtl' : 'ltr' }}>
         <StatusBar style="dark" />
-        <View style={{ flex: 1 }}>{body}</View>
-        {signedInApp && !top ? <TabBar tab={MAIN_TABS.includes(view) ? view : null} onTab={k => { if (k === 'feed') setFeedOf(null); nav.go(k); }} /> : null}
+        <TabBarCtx.Provider value={showTabBar}><View style={{ flex: 1 }}>{body}</View></TabBarCtx.Provider>
+        {showTabBar ? <TabBar tab={MAIN_TABS.includes(view) ? view : null} onTab={k => { if (k === 'feed') setFeedOf(null); nav.go(k); }} /> : null}
         {signedInApp ? <Menu visible={menu} onClose={() => setMenu(false)} current={top ? null : view} go={nav.go} openScreen={nav.open} /> : null}
       </View>
     </NavCtx.Provider>
