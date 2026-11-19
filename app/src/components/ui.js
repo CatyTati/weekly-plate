@@ -126,6 +126,14 @@ export function MenuButton() {
   return <RoundButton icon="menu" label={t('menu')} onPress={openMenu} />;
 }
 
+/** Opens search over the current screen. Shown at the top of the main screens. */
+export function SearchButton() {
+  const { open } = useNav();
+  const { t } = useStore();
+  if (!open) return null;
+  return <RoundButton icon="search" label={t('tab_search')} onPress={() => open('search')} />;
+}
+
 export function Header({ title, sub, right, menu = true }) {
   return (
     <View style={{ gap: 4, marginBottom: 4 }}>
@@ -133,6 +141,7 @@ export function Header({ title, sub, right, menu = true }) {
         {menu ? <MenuButton /> : null}
         <T v="display" style={{ flex: 1 }}>{title}</T>
         {right}
+        {menu ? <SearchButton /> : null}
       </View>
       {sub ? <T c="muted">{sub}</T> : null}
     </View>
@@ -263,7 +272,7 @@ export function CopiedNote({ recipe }) {
 
 export function TabBar({ tab, onTab }) {
   const { t } = useStore();
-  const tabs = [['home', 'home'], ['week', 'tab_week'], ['feed', 'feed'], ['search', 'tab_search'], ['shop', 'tab_shop']];
+  const tabs = [['home', 'home'], ['week', 'tab_week'], ['feed', 'feed'], ['shop', 'tab_shop']];
   return (
     <SafeAreaView edges={['bottom']} style={s.tabbar}>
       <View style={s.row}>

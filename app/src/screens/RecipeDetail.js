@@ -4,7 +4,7 @@ import { useStore } from '../store';
 import { useNav } from '../nav';
 import { isDemo } from '../auth';
 import { copiersOf } from '../social';
-import { cost, dayName, fmtQty, hasPrice, ingName, money, num, pick } from '../logic';
+import { cost, dayName, fmtQty, hasPrice, ingName, mealOf, money, num, pick } from '../logic';
 import AddToWeekSheet from './AddToWeek';
 import { color } from '../theme';
 import { Avatar, Button, Card, ConfirmDialog, CopiedNote, Icon, Pill, Row, RoundButton, Screen, Stepper, T, Tag } from '../components/ui';
@@ -118,7 +118,7 @@ export default function RecipeDetail({ id, recipe, canCopy, pickFor, back }) {
           </Row>
         </Pressable>
       ) : null}
-      <PhotoSlider photos={r.photos} height={220} radius={28} empty={<FoodArt height={220} />} />
+      <PhotoSlider photos={r.photos} height={220} radius={28} empty={<FoodArt height={220} meal={mealOf(r)} />} />
       <View style={{ gap: 8 }}>
         <T v="title">{pick(r.name, lang)}</T>
         <CopiedNote recipe={r} />

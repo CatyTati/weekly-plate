@@ -3,9 +3,9 @@ import React, { useEffect, useState } from 'react';
 import { Image, Pressable, View } from 'react-native';
 import { useStore } from '../store';
 import { useNav } from '../nav';
-import { dayName, firstName, greetingKey, num, pick, weekKey } from '../logic';
+import { dayName, firstName, greetingKey, mealOf, num, pick, weekKey } from '../logic';
 import { color, font } from '../theme';
-import { Avatar, Card, Icon, MenuButton, Row, RoundButton, Screen, T } from '../components/ui';
+import { Avatar, Card, Icon, MenuButton, Row, Screen, SearchButton, T } from '../components/ui';
 import FoodArt from '../components/FoodArt';
 import { RecipeList } from './Recipes';
 import { isDemo } from '../auth';
@@ -32,7 +32,7 @@ function Tonight({ recipe, onOpen, onPick }) {
     <Pressable onPress={onOpen} accessibilityRole="button" accessibilityLabel={`${t('tonight')}: ${pick(recipe.name, state.lang)}`}>
       <Card style={{ padding: 0, overflow: 'hidden', gap: 0 }}>
         <View>
-          {recipe.photos?.[0] ? <Image source={{ uri: recipe.photos[0] }} style={{ width: '100%', height: 190 }} resizeMode="cover" /> : <FoodArt height={190} radius={0} />}
+          {recipe.photos?.[0] ? <Image source={{ uri: recipe.photos[0] }} style={{ width: '100%', height: 190 }} resizeMode="cover" /> : <FoodArt height={190} radius={0} meal={mealOf(recipe)} />}
           <View style={{ position: 'absolute', top: 12, start: 12, backgroundColor: color.accent, borderRadius: 99, paddingHorizontal: 12, paddingVertical: 5 }}>
             <T v="label" c="onAccent" style={{ fontFamily: font.medium }}>{t('tonight')}</T>
           </View>
@@ -125,6 +125,7 @@ export default function Home() {
       <Row gap={12}>
         <MenuButton />
         <View style={{ flex: 1 }} />
+        <SearchButton />
         <People me={user?.id} />
         <Pressable onPress={() => go('settings')} accessibilityRole="button" accessibilityLabel={t('settings')}>
           <Avatar letter={name[0]} size={40} />
@@ -141,11 +142,8 @@ export default function Home() {
         onPick={() => open('pick', { week: weekKey(), day: today })} />
       <WeekStrip plan={state.plan} today={today} onPress={() => go('week')} />
 
-      <Row gap={10} style={{ marginTop: 6 }}>
-        <T v="title" style={{ flex: 1 }}>{t('myRecipes')} <T v="title" c="muted">· {num(recipes.length, lang)}</T></T>
-        <RoundButton icon="plus" bg="accent" c="onAccent" size={40} label={t('addRecipe')} onPress={() => open('add')} />
-      </Row>
-      <RecipeList open={open} showAdd={false} />
+      <T v="title" style={{ marginTop: 6 }}>{t('myRecipes')} <T v="title" c="muted">· {num(recipes.length, lang)}</T></T>
+      <RecipeList open={open} />
     </Screen>
   );
 }

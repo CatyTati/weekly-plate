@@ -6,7 +6,7 @@ import { ActivityIndicator, Image, Pressable, View, useWindowDimensions } from '
 import { useStore } from '../store';
 import { useNav } from '../nav';
 import { getProfile, photosOf, recipesOf, weeksOf } from '../social';
-import { dayName, keyToDate, num, pick, weekKey, weekRangeLabel } from '../logic';
+import { dayName, keyToDate, mealOf, num, pick, weekKey, weekRangeLabel } from '../logic';
 import { color, font } from '../theme';
 import { Avatar, Button, Card, CopiedNote, Icon, Row, RoundButton, Screen, T } from '../components/ui';
 import { followLabel, useFollowing } from './People';
@@ -21,7 +21,7 @@ function Tile({ r, size, onPress }) {
   return (
     <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={r.name} style={{ width: size }}>
       <View style={{ width: size, height: size, borderRadius: 18, overflow: 'hidden', backgroundColor: color.plate }}>
-        {r.photos[0] ? <Image source={{ uri: r.photos[0] }} style={{ width: size, height: size }} /> : <FoodArt height={size} radius={0} />}
+        {r.photos[0] ? <Image source={{ uri: r.photos[0] }} style={{ width: size, height: size }} /> : <FoodArt height={size} radius={0} meal={mealOf(r)} />}
         <View style={{ position: 'absolute', start: 0, end: 0, bottom: 0, padding: 10, paddingTop: 24, backgroundColor: 'rgba(0,0,0,0.42)' }}>
           <T v="bodyStrong" c="#fff" numberOfLines={2}>{r.name}</T>
           <Row gap={4}>

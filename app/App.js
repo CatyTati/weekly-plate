@@ -69,10 +69,10 @@ function Root() {
   else if (top?.screen === 'add') body = <AddRecipe id={top.params?.id} back={nav.back} />;
   else if (top?.screen === 'prep') body = <Prep back={nav.back} />;
   else if (top?.screen === 'foods') body = <Foods back={nav.back} />;
+  else if (top?.screen === 'search') body = <Search back={nav.back} />;
   else if (view === 'home') body = <Home />;
   else if (view === 'week') body = <Week open={nav.open} view={weekView} setView={setWeekView} />;
   else if (view === 'feed') body = <Feed />;
-  else if (view === 'search') body = <Search />;
   else if (view === 'shop') body = <Shop />;
   else if (view === 'recipes') body = <Recipes open={nav.open} />;
   else if (view === 'community') body = <Community />;

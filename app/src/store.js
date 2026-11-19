@@ -4,7 +4,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { OTHER_MEALS, makeT, isRtl, mealsOf, mergeMine, planWeek, swapDay as swap, weekKey } from './logic';
 import * as Linking from 'expo-linking';
-import { currentUser, handleAuthLink, isDemo, isRecoveryLink, onAuthChange, signOut } from './auth';
+import { currentUser, deleteAccount, handleAuthLink, isDemo, isRecoveryLink, onAuthChange, signOut } from './auth';
 import { deleteCloudRecipe, loadMine, noteCopy, pushMeals, pushRecipe, pushWeek, syncPhotos, syncProfileName, updateCloudRecipe } from './social';
 
 const KEY = 'weekly-plate/v1';
@@ -263,6 +263,12 @@ export function StoreProvider({ children }) {
     toggleSave: id => setState(s => ({ ...s, saved: { ...s.saved, [id]: !s.saved[id] } })),
     signedIn: u => setUser(u),
     logout: async () => { try { await signOut(); } finally { setUser(null); } },
+    // Throws if the account wasn't deleted, so the screen can say so; the phone's copy goes too.
+    deleteAccount: async () => {
+      const id = await deleteAccount();
+      if (id) await AsyncStorage.removeItem(keyFor(id)).catch(() => {});
+      setUser(null);
+    },
   }), []);
 
   const value = useMemo(() => ({ state, ready, user, recovery, syncFailed, endRecovery: () => setRecovery(false), recipes, byId, t, rtl: isRtl(state.lang), ...actions }), [state, ready, user, recovery, syncFailed, recipes, byId, t, actions]);

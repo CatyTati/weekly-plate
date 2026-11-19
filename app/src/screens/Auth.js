@@ -3,14 +3,13 @@ import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { useStore } from '../store';
-import { isDemo, signInWithEmail, signInWithProvider, signUpWithEmail, sendPasswordReset, updatePassword } from '../auth';
+import { appleAvailable, isDemo, signInWithEmail, signInWithProvider, signUpWithEmail, sendPasswordReset, updatePassword } from '../auth';
 import { PASS_MIN, validateEmail, validateSignIn, validateSignUp } from '../logic';
 import { color, radius, shadow } from '../theme';
 import { Button, Checkbox, Field, Header, Row, RoundButton, Screen, T } from '../components/ui';
 import FoodArt from '../components/FoodArt';
 import { LanguageSwitch } from './Onboarding';
-
-const APPLE_ENABLED = false; // turn on once Sign in with Apple is set up in Supabase
+import Privacy from './Privacy';
 
 const GoogleLogo = () => (
   <Svg width={18} height={18} viewBox="0 0 24 24">
@@ -93,6 +92,9 @@ export default function Auth({ onSignedIn }) {
   const [errors, setErrors] = useState({});
   const [message, setMessage] = useState(null); // { text, kind }
   const [busy, setBusy] = useState(false);
+  const [apple, setApple] = useState(false); // iPhone only
+  const [showPrivacy, setShowPrivacy] = useState(false);
+  useEffect(() => { appleAvailable().then(setApple); }, []);
 
   useEffect(() => { setErrors({}); setMessage(null); }, [state.lang]); // messages are stored already translated
 
@@ -145,14 +147,14 @@ export default function Auth({ onSignedIn }) {
             <T c="muted" center>{t('tagline')}</T>
           </View>
           {social('google', t('withGoogle'))}
-          {APPLE_ENABLED ? social('apple', t('withApple')) : null}
+          {apple ? social('apple', t('withApple')) : null}
           <Divider label={t('orEmail')} />
         </>
       ) : (
         <>
           <RoundButton icon="back" flip label={t('back')} onPress={() => go('signin')} />
           <Header title={mode === 'signup' ? t('createAccount') : t('forgotTitle')} sub={mode === 'signup' ? t('createSub') : t('forgotSub')} />
-          {mode === 'signup' ? <>{social('google', t('signupGoogle'))}<Divider label={t('or')} /></> : null}
+          {mode === 'signup' ? <>{social('google', t('signupGoogle'))}{apple ? social('apple', t('signupApple')) : null}<Divider label={t('or')} /></> : null}
         </>
       )}
 
@@ -182,6 +184,12 @@ export default function Auth({ onSignedIn }) {
           </Row>
         </Pressable>
       ) : null}
+      {mode === 'signup' ? (
+        <Pressable accessibilityRole="link" onPress={() => setShowPrivacy(true)} hitSlop={8} style={{ alignSelf: 'flex-start' }}>
+          <T v="bodyStrong" c="accent">{t('readPrivacy')}</T>
+        </Pressable>
+      ) : null}
+      <Privacy visible={showPrivacy} onClose={() => setShowPrivacy(false)} />
 
       {isDemo ? <T v="label" c="muted" center>{t('demoNote')}</T> : null}
     </Screen>

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Image, Modal, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore } from '../store';
-import { MEALS, OTHER_MEALS, dayName, keyToDate, localeOf, mealPlan, num, pick, thisSunday, weekDishIds, weekKey, weekRangeLabel } from '../logic';
+import { MEALS, OTHER_MEALS, dayName, keyToDate, localeOf, mealOf, mealPlan, num, pick, thisSunday, weekDishIds, weekKey, weekRangeLabel } from '../logic';
 import { color, font, radius } from '../theme';
 import { Button, Card, Header, Icon, RoundButton, Row, Screen, T } from '../components/ui';
 import FoodArt from '../components/FoodArt';
@@ -100,11 +100,11 @@ function MealChooser({ day, meals, onPick, onClose }) {
   );
 }
 
-/** A small picture of the dish: its first photo, or the drawn table. */
+/** A small picture of the dish: its first photo, or the drawn table for its meal. */
 function Thumb({ recipe }) {
   return (
     <View style={{ width: 64, height: 64, borderRadius: 16, overflow: 'hidden' }}>
-      {recipe.photos?.[0] ? <Image source={{ uri: recipe.photos[0] }} style={{ width: 64, height: 64 }} /> : <FoodArt height={64} radius={16} />}
+      {recipe.photos?.[0] ? <Image source={{ uri: recipe.photos[0] }} style={{ width: 64, height: 64 }} /> : <FoodArt height={64} radius={16} meal={mealOf(recipe)} />}
     </View>
   );
 }

@@ -4,7 +4,7 @@ import { ActivityIndicator, Modal, Pressable, RefreshControl, ScrollView, StyleS
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore } from '../store';
 import { useNav } from '../nav';
-import { dayName, keyToDate, num, pick, thisSunday, timeAgo, weekKey, weekRangeLabel } from '../logic';
+import { dayName, keyToDate, mealOf, num, pick, thisSunday, timeAgo, weekKey, weekRangeLabel } from '../logic';
 import { color, font } from '../theme';
 import { Avatar, Button, Card, CopiedNote, Header, Icon, Pill, Row, Screen, T, Tag } from '../components/ui';
 import PhotoSlider from '../components/PhotoSlider';
@@ -100,7 +100,7 @@ function Post({ r, reactions }) {
       </Pressable>
       <Pressable onPress={openRecipe} accessibilityRole="button" accessibilityLabel={r.name}>
         <View>
-          <PhotoSlider photos={r.photos} height={280} radius={0} empty={<FoodArt height={280} radius={0} />} />
+          <PhotoSlider photos={r.photos} height={280} radius={0} empty={<FoodArt height={280} radius={0} meal={mealOf(r)} />} />
           <Row gap={5} style={{ position: 'absolute', top: 12, start: 12, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 99, paddingHorizontal: 10, paddingVertical: 4 }}>
             <Icon name="clock" c="#fff" size={13} />
             <T v="label" c="#fff" style={{ fontFamily: font.medium }}>{r.time} {t('min')}</T>

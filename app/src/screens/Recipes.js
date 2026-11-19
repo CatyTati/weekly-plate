@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Modal, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore } from '../store';
-import { MEALS, TAG_KEYS, cost, dayName, hasPrice, mealsOf, money, num, pick } from '../logic';
+import { MEALS, TAG_KEYS, cost, dayName, hasPrice, mealOf, mealsOf, money, num, pick } from '../logic';
 import { color, font } from '../theme';
 import { Button, Card, CopiedNote, Field, Header, Icon, Pill, Row, RoundButton, Screen, T, Tag } from '../components/ui';
 import PhotoSlider from '../components/PhotoSlider';
@@ -100,7 +100,7 @@ export function RecipeList({ open, onPick, showAdd = true, meal: firstMeal = 'al
         <Pressable key={r.id} onPress={() => (onPick ? onPick(r.id) : open('recipe', { id: r.id }))}>
           <Card style={{ gap: 10, paddingTop: 12 }}>
             <View>
-              <PhotoSlider photos={r.photos} height={PICTURE} radius={18} empty={<FoodArt height={PICTURE} radius={18} />} />
+              <PhotoSlider photos={r.photos} height={PICTURE} radius={18} empty={<FoodArt height={PICTURE} radius={18} meal={mealOf(r)} />} />
               <Row gap={5} style={{ position: 'absolute', top: 10, start: 10, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 99, paddingHorizontal: 10, paddingVertical: 4 }}>
                 <Icon name="clock" c="#fff" size={13} />
                 <T v="label" c="#fff" style={{ fontFamily: font.medium }}>{r.time} {t('min')}</T>

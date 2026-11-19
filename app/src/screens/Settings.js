@@ -1,6 +1,7 @@
-// Settings: account, language, private account, home preferences, what the home page shows, log out.
+// Settings: account, language, private account, home preferences, what the home page shows,
+// log out, the privacy policy and deleting the account.
 import React, { useEffect, useState } from 'react';
-import { Pressable, Switch, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, Switch, View } from 'react-native';
 import { useStore } from '../store';
 import { isDemo } from '../auth';
 import { getPrivate, setPrivate } from '../social';
@@ -8,14 +9,26 @@ import { TAG_KEYS, firstName } from '../logic';
 import { color } from '../theme';
 import { Avatar, Card, Field, Header, Pill, Row, Screen, Stepper, T } from '../components/ui';
 import { LanguageSwitch } from './Onboarding';
+import Privacy from './Privacy';
 
 
 export default function Settings() {
-  const { state, user, t, set, toggleMode, logout } = useStore();
+  const { state, user, t, set, toggleMode, logout, deleteAccount } = useStore();
   const [confirmOut, setConfirmOut] = useState(false);
   const [priv, setPriv] = useState(null); // null until loaded
+  const [deleting, setDeleting] = useState(false);
+  const [showPrivacy, setShowPrivacy] = useState(false);
   useEffect(() => { getPrivate(user?.id).then(setPriv).catch(() => {}); }, [user?.id]);
   const name = user?.name || firstName(user);
+
+  const askDelete = () => Alert.alert(t('deleteTitle'), t('deleteBody'), [
+    { text: t('cancel'), style: 'cancel' },
+    { text: t('deleteYes'), style: 'destructive', onPress: async () => {
+      setDeleting(true);
+      try { await deleteAccount(); }
+      catch (e) { setDeleting(false); Alert.alert(t('deleteFailed')); console.warn('delete account', e?.message); }
+    } },
+  ]);
 
   return (
     <Screen>
@@ -74,6 +87,16 @@ export default function Settings() {
           <T v="bodyStrong" c="error" center>{confirmOut ? t('logoutConfirm') : t('logout')}</T>
         </Card>
       </Pressable>
+
+      <Pressable accessibilityRole="link" onPress={() => setShowPrivacy(true)} hitSlop={8} style={{ alignSelf: 'center', paddingVertical: 4 }}>
+        <T v="caption" c="muted" center>{t('privacy')}</T>
+      </Pressable>
+      <Privacy visible={showPrivacy} onClose={() => setShowPrivacy(false)} />
+      {deleting ? <ActivityIndicator color={color.error} /> : (
+        <Pressable accessibilityRole="button" onPress={askDelete} hitSlop={8} style={{ alignSelf: 'center', paddingVertical: 4 }}>
+          <T v="caption" c="error" center>{t('deleteAccount')}</T>
+        </Pressable>
+      )}
     </Screen>
   );
 }

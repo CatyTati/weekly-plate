@@ -8,7 +8,7 @@ import { useNav } from '../nav';
 import { explore, listPeople, recipeById } from '../social';
 import { num } from '../logic';
 import { color } from '../theme';
-import { ConfirmDialog, Field, Icon, Row, Screen, T } from '../components/ui';
+import { ConfirmDialog, Field, Icon, Row, RoundButton, Screen, T } from '../components/ui';
 import FoodArt from '../components/FoodArt';
 import { PersonRow, followLabel, useFollowing } from './People';
 
@@ -38,7 +38,7 @@ function DishTile({ d, size, onPress }) {
   );
 }
 
-export default function Search() {
+export default function Search({ back }) {
   const { user, t } = useStore();
   const { open } = useNav();
   const me = user?.id;
@@ -80,7 +80,10 @@ export default function Search() {
 
   return (
     <Screen refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={color.accent} />}>
-      <T v="heading">{t('searchTitle')}</T>
+      <Row gap={12}>
+        <RoundButton icon="back" flip label={t('back')} onPress={back} />
+        <T v="heading" style={{ flex: 1 }}>{t('searchTitle')}</T>
+      </Row>
       <View>
         <Field placeholder={t('searchAll')} value={q} onChangeText={setQ} autoCorrect={false} returnKeyType="search" inputStyle={{ paddingStart: 42 }} />
         <View pointerEvents="none" style={{ position: 'absolute', start: 14, top: 0, bottom: 0, justifyContent: 'center' }}>

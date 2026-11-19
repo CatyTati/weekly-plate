@@ -1,7 +1,8 @@
 // Sign in / sign up / log out.
 //
 // With EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY set (see .env.example)
-// this uses Supabase Auth: Google and Apple through the system browser, email + password,
+// this uses Supabase Auth: Google through the system browser, Apple through iOS's own sheet,
+// email + password,
 // and password reset. The same session token is what the Python API checks.
 //
 // Without those keys the app runs in demo mode: the account is stored only on the phone,
@@ -10,6 +11,9 @@ import 'react-native-url-polyfill/auto';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
+import * as AppleAuthentication from 'expo-apple-authentication';
+import * as Crypto from 'expo-crypto';
+import { Platform } from 'react-native';
 import { createClient } from '@supabase/supabase-js';
 
 WebBrowser.maybeCompleteAuthSession();
@@ -65,8 +69,43 @@ async function demoSave(user) {
   return user;
 }
 
+/** True on an iPhone, where Sign in with Apple uses the system's own sheet. */
+export async function appleAvailable() {
+  if (Platform.OS !== 'ios') return false;
+  return AppleAuthentication.isAvailableAsync().catch(() => false);
+}
+
+/**
+ * Sign in with Apple through iOS's own sheet (Face ID, no browser). Apple signs a token for
+ * this app and Supabase checks it; the nonce ties that token to this one sign-in.
+ */
+async function signInWithApple() {
+  const nonce = Crypto.randomUUID();
+  let cred;
+  try {
+    cred = await AppleAuthentication.signInAsync({
+      requestedScopes: [AppleAuthentication.AppleAuthenticationScope.FULL_NAME, AppleAuthentication.AppleAuthenticationScope.EMAIL],
+      nonce: await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, nonce),
+    });
+  } catch (e) {
+    if (e?.code === 'ERR_REQUEST_CANCELED') throw new AuthError('eCancelled');
+    throw new AuthError('eNetwork', e?.message);
+  }
+  if (!cred.identityToken) throw new AuthError('eNetwork', 'no identity token');
+  const { data, error } = await supabase.auth.signInWithIdToken({ provider: 'apple', token: cred.identityToken, nonce });
+  if (error) throw mapError(error);
+  // Apple gives the name only the first time someone signs in to the app, so keep it then.
+  const full = [cred.fullName?.givenName, cred.fullName?.familyName].filter(Boolean).join(' ');
+  if (full && !data.user.user_metadata?.full_name) {
+    const upd = await supabase.auth.updateUser({ data: { full_name: full } });
+    if (!upd.error) return toUser(upd.data.user, 'apple');
+  }
+  return toUser(data.user, 'apple');
+}
+
 export async function signInWithProvider(provider) {
   if (isDemo) return demoSave({ id: 'demo-' + provider, email: provider === 'apple' ? 'you@icloud.com' : 'you@gmail.com', name: '', provider });
+  if (provider === 'apple' && Platform.OS === 'ios') return signInWithApple();
   const redirectTo = Linking.createURL('auth-callback');
   const { data, error } = await supabase.auth.signInWithOAuth({ provider, options: { redirectTo, skipBrowserRedirect: true } });
   if (error) throw mapError(error);
@@ -131,6 +170,31 @@ export async function updatePassword(password) {
 export async function signOut() {
   if (isDemo) { await AsyncStorage.removeItem(DEMO_KEY); return; }
   await supabase.auth.signOut();
+}
+
+/**
+ * Deletes the signed-in account for good: first its photo files, then the account itself,
+ * which takes every recipe, plan and follow with it (see delete_my_account in the database).
+ * Returns the deleted account's id.
+ */
+export async function deleteAccount() {
+  if (isDemo) { await AsyncStorage.removeItem(DEMO_KEY); return null; }
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new AuthError('eNetwork', 'signed out');
+  const photos = supabase.storage.from('recipe-photos');
+  for (;;) {
+    const { data, error } = await photos.list(user.id, { limit: 100 });
+    if (error) throw new AuthError('eNetwork', error.message);
+    if (!data.length) break;
+    const del = await photos.remove(data.map(f => `${user.id}/${f.name}`));
+    if (del.error) throw new AuthError('eNetwork', del.error.message);
+    if (!del.data?.length) break; // nothing could be removed; don't loop forever
+  }
+  const { error } = await supabase.rpc('delete_my_account');
+  if (error) throw new AuthError('eNetwork', error.message);
+  // The account is gone on the server, so only the copy of the session on this phone is left.
+  await supabase.auth.signOut({ scope: 'local' });
+  return user.id;
 }
 
 /** Access token for calls to the Python API (Authorization: Bearer …). */
