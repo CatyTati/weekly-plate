@@ -1,9 +1,10 @@
 // Sign in / sign up / log out.
 //
 // With EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY set (see .env.example)
-// this uses Supabase Auth: Google through the system browser, Apple through iOS's own sheet,
-// email + password,
-// and password reset. The same session token is what the Python API checks.
+// this uses Supabase Auth: Google and Apple, email + password, and password reset.
+// Google uses the phone's own account picker when EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID is set
+// (it shows "Weekly Plate"; the browser page shows the Supabase address instead), and the
+// browser otherwise, or in Expo Go. Apple uses iOS's own sheet. The same session token is what the Python API checks.
 //
 // Without those keys the app runs in demo mode: the account is stored only on the phone,
 // so every screen can be tried before a Supabase project exists.
@@ -13,6 +14,7 @@ import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import * as Crypto from 'expo-crypto';
+import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { createClient } from '@supabase/supabase-js';
 
@@ -21,6 +23,8 @@ WebBrowser.maybeCompleteAuthSession();
 const URL = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
 const DEMO_KEY = 'weekly-plate/demo-user';
+const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
+const GOOGLE_IOS_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID;
 
 export const isDemo = !(URL && KEY);
 
@@ -103,9 +107,46 @@ async function signInWithApple() {
   return toUser(data.user, 'apple');
 }
 
+// The Google module is native: it isn't in Expo Go, and on iOS it needs its own client ID.
+let googleModule;
+function nativeGoogle() {
+  if (googleModule !== undefined) return googleModule;
+  googleModule = null;
+  if (!GOOGLE_WEB_CLIENT_ID || Constants.executionEnvironment === 'storeClient') return null;
+  if (Platform.OS === 'ios' && !GOOGLE_IOS_CLIENT_ID) return null;
+  try {
+    const mod = require('@react-native-google-signin/google-signin');
+    // webClientId makes Google return an ID token that Supabase can check.
+    mod.GoogleSignin.configure({ webClientId: GOOGLE_WEB_CLIENT_ID, iosClientId: GOOGLE_IOS_CLIENT_ID });
+    googleModule = mod;
+  } catch { /* not in this build */ }
+  return googleModule;
+}
+
+/** Sign in with Google through the phone's own account picker, then hand the token to Supabase. */
+async function signInWithGoogle({ GoogleSignin, statusCodes }) {
+  let idToken;
+  try {
+    if (Platform.OS === 'android') await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+    const res = await GoogleSignin.signIn();
+    if (res?.type === 'cancelled') throw new AuthError('eCancelled');
+    idToken = res?.data?.idToken ?? res?.idToken; // v13+ wraps the result in { type, data }
+  } catch (e) {
+    if (e instanceof AuthError) throw e;
+    if (e?.code === statusCodes?.SIGN_IN_CANCELLED || e?.code === statusCodes?.IN_PROGRESS) throw new AuthError('eCancelled');
+    throw new AuthError('eNetwork', e?.message);
+  }
+  if (!idToken) throw new AuthError('eNetwork', 'no id token');
+  const { data, error } = await supabase.auth.signInWithIdToken({ provider: 'google', token: idToken });
+  if (error) throw mapError(error);
+  return toUser(data.user, 'google');
+}
+
 export async function signInWithProvider(provider) {
   if (isDemo) return demoSave({ id: 'demo-' + provider, email: provider === 'apple' ? 'you@icloud.com' : 'you@gmail.com', name: '', provider });
   if (provider === 'apple' && Platform.OS === 'ios') return signInWithApple();
+  const google = provider === 'google' ? nativeGoogle() : null;
+  if (google) return signInWithGoogle(google);
   const redirectTo = Linking.createURL('auth-callback');
   const { data, error } = await supabase.auth.signInWithOAuth({ provider, options: { redirectTo, skipBrowserRedirect: true } });
   if (error) throw mapError(error);
@@ -170,6 +211,8 @@ export async function updatePassword(password) {
 export async function signOut() {
   if (isDemo) { await AsyncStorage.removeItem(DEMO_KEY); return; }
   await supabase.auth.signOut();
+  // Forget the chosen Google account so the next sign-in lets the user pick again.
+  await nativeGoogle()?.GoogleSignin.signOut().catch(() => {});
 }
 
 /**
@@ -194,6 +237,7 @@ export async function deleteAccount() {
   if (error) throw new AuthError('eNetwork', error.message);
   // The account is gone on the server, so only the copy of the session on this phone is left.
   await supabase.auth.signOut({ scope: 'local' });
+  await nativeGoogle()?.GoogleSignin.signOut().catch(() => {});
   return user.id;
 }
 

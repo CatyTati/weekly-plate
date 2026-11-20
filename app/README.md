@@ -51,6 +51,24 @@ so every screen can be tried. To use real accounts with Supabase:
 3. Copy `.env.example` to `.env` and fill in the project URL and anon key.
 4. Restart with `npx expo start --clear`.
 
+### Google sign-in with the phone's own account picker
+
+The browser page Google shows says "Sign in to xxxx.supabase.co". With the steps
+below, Android builds use the phone's account picker instead, which shows
+**Weekly Plate**. Expo Go always uses the browser.
+
+1. expo.dev > the **weekly-plate** project > Credentials > Android: copy the
+   **SHA-1 fingerprint** of the keystore.
+2. Google Cloud > Google Auth Platform > Clients > Create client > **Android**:
+   package `com.catytati.weeklyplate` and that SHA-1.
+3. Copy the **Web application** client's ID (the one in Supabase) and add it as
+   `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID`: on expo.dev > project > Environment variables
+   (preview and production, plain text), and in `.env` for `npx expo start`.
+4. In Supabase > Providers > Google, that Web client ID must be in **Client IDs**.
+5. Build again: `npx eas-cli build -p android --profile preview`.
+
+Without the variable, Google sign-in keeps using the browser.
+
 ## Code
 
 | Path | What it is |
