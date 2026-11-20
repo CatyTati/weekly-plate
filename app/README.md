@@ -69,8 +69,9 @@ phone's own sign-in sheet instead, which shows **Weekly Plate**. It's free.
    - EAS build: `npx eas credentials` > Android shows the SHA-1.
    - Google Play: Play Console > Test and release > App integrity > App signing key.
 4. For iPhone: Create client > **iOS**, bundle ID `com.catytati.weeklyplate`. Put its
-   client ID in `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID` and its "iOS URL scheme"
-   (`com.googleusercontent.apps.…`) in `EXPO_PUBLIC_GOOGLE_IOS_URL_SCHEME`.
+   client ID in `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID`, and add the plugin with its
+   "iOS URL scheme" to `plugins` in `app.json`:
+   `["@react-native-google-signin/google-signin", { "iosUrlScheme": "com.googleusercontent.apps.…" }]`
 
 **Supabase**: Authentication > Providers > Google > **Client IDs**: list the Web client
 ID first, then the iOS client ID, separated by commas. For iPhone also turn on
@@ -85,9 +86,17 @@ which EAS sets up on the first build.
 ```bash
 npm install
 npm run setup
-npm run android:build   # Android Studio or a phone on USB; or: npx eas build -p android --profile development
-npx expo start          # later, for code changes: the installed build reloads like Expo Go
+npx eas-cli login                                          # free account on expo.dev
+npx eas-cli init                                           # once: links the app to the Expo account
+npx eas-cli build -p android --profile development         # builds in the cloud, gives an install link
+npx eas-cli credentials -p android                         # shows the SHA-1 for the Android client
+npx expo start                                             # then open the installed app: it reloads like Expo Go
 ```
+
+The development build loads its code from `npx expo start`, so it reads `.env`
+from your computer. Builds for the store (`--profile production`) don't see `.env`:
+add the same `EXPO_PUBLIC_…` values on expo.dev > Project > Environment variables.
+With Android Studio installed, `npm run android:build` builds on the computer instead.
 
 If the native sheet can't be used (Expo Go, or a client ID is missing) the app falls
 back to the browser, so sign-in keeps working.
