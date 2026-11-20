@@ -1,128 +1,183 @@
-// Feed: posts from cooks you follow, newest first, like Instagram.
-import React, { useState } from 'react';
-import { FlatList, Pressable, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+// Feed: the newest recipes from people you follow. CopyWeekSheet is also used on profiles.
+import React, { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Modal, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore } from '../store';
 import { useNav } from '../nav';
-import { COOKS, cost, dayName, feedFor, money, num, pick, timeAgo } from '../logic';
-import { color, tagColor } from '../theme';
-import { Avatar, Button, Card, Icon, MenuButton, Pill, Row, RoundButton, T, Tag, s as ui } from '../components/ui';
-import { Stories } from './Home';
+import { dayName, keyToDate, mealOf, num, pick, thisSunday, timeAgo, weekKey, weekRangeLabel } from '../logic';
+import { color, font } from '../theme';
+import { Avatar, Button, Card, CopiedNote, Header, Icon, Pill, Row, Screen, T, Tag } from '../components/ui';
+import PhotoSlider from '../components/PhotoSlider';
+import FoodArt from '../components/FoodArt';
+import { feedOf } from '../social';
+import { ReactionBar, useReactions } from '../components/Reactions';
+import { SourceInfo } from './AddToWeek';
 
-function Post({ post }) {
-  const { state, t, byId, toggleLike, toggleSave, setDay, copyPlan } = useStore();
-  const { open, go } = useNav();
-  const [picking, setPicking] = useState(false);
+/**
+ * Asks which week to copy someone's week into, and says what will change.
+ * `theirs` holds their recipes, which are copied into yours.
+ */
+export function CopyWeekSheet({ cook, theirs, nameOf, onClose }) {
+  const { state, t, rtl, byId, copyWeekFrom } = useStore();
+  const { showWeek } = useNav();
+  const insets = useSafeAreaInsets();
   const lang = state.lang;
-  const cook = COOKS.find(c => c.id === post.cook);
-  const [fg, bg] = tagColor[cook.modes[0]];
-  const recipe = post.kind === 'recipe' ? byId(post.recipe) : null;
-  const liked = !!state.liked[post.id], saved = !!state.saved[post.id];
+  const today = new Date().getDay();
+  const weeks = [0, 1, 2, 3].map(i => {
+    const start = thisSunday(); start.setDate(start.getDate() + 7 * i);
+    return { i, key: weekKey(start) };
+  });
+  const [chosen, setChosen] = useState(weeks[1].key);
   const name = pick(cook.name, lang);
+  const weekName = i => (i === 0 ? t('thisWeek') : i === 1 ? t('nextWeek') : t('inWeeks', { n: num(i, lang) }));
+  const replaced = (key, i) => (state.weeks[key] || []).filter((id, d) => id && (i > 0 || d >= today)).length;
 
   return (
-    <Card style={{ paddingHorizontal: 0, paddingTop: 14, paddingBottom: 16, gap: 12 }}>
-      <Row gap={10} style={{ paddingHorizontal: 16 }}>
-        <Avatar letter={name[0]} fg={fg} bg={bg} size={40} ring />
-        <View style={{ flex: 1 }}>
-          <T v="bodyStrong">{name}</T>
-          <T v="caption" c="muted">{timeAgo(post.hours, t)}{post.kind === 'week' ? ` · ${t('sharedWeek')}` : ''}</T>
-        </View>
-      </Row>
-
-      <Pressable onPress={() => (recipe ? open('recipe', { id: recipe.id }) : null)} onLongPress={() => toggleLike(post.id)}
-        style={{ height: 260, backgroundColor: post.photo[0], alignItems: 'center', justifyContent: 'center' }}>
-        {post.kind === 'week' ? (
-          <View style={{ backgroundColor: color.surface, borderRadius: 20, padding: 14, gap: 6, width: '78%' }}>
-            {cook.plan.slice(0, 5).map((id, d) => (
+    <Modal visible transparent animationType="slide" onRequestClose={onClose}>
+      <View style={{ flex: 1, justifyContent: 'flex-end', direction: rtl ? 'rtl' : 'ltr' }}>
+        <Pressable style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(58,51,64,0.28)' }]} accessibilityLabel={t('close')} onPress={onClose} />
+        <View style={{ backgroundColor: color.bg, borderTopLeftRadius: 28, borderTopRightRadius: 28, maxHeight: '88%', marginTop: insets.top }}>
+          <ScrollView contentContainerStyle={{ padding: 22, paddingBottom: 22 + insets.bottom, gap: 14 }}>
+          <T v="title">{t('copyTitle', { n: name })}</T>
+          <SourceInfo cook={cook} whole />
+          <T c="muted">{t('copyExplain', { n: name })}</T>
+          <Card style={{ gap: 6, paddingVertical: 12 }}>
+            {cook.plan.map((id, d) => (id ? (
               <Row key={d} gap={10}>
                 <T v="label" c="accent" style={{ minWidth: 64 }}>{dayName(d, lang)}</T>
-                <T v="caption" style={{ flex: 1 }} numberOfLines={1}>{pick(byId(id).name, lang)}</T>
+                <T v="caption" style={{ flex: 1 }} numberOfLines={1}>{nameOf ? nameOf(id) : pick(byId(id)?.name, lang)}</T>
               </Row>
-            ))}
+            ) : null))}
+          </Card>
+          <T v="bodyStrong">{t('copyWhich')}</T>
+          <View style={{ gap: 8 }}>
+            {weeks.map(({ i, key }) => {
+              const on = key === chosen;
+              const n = replaced(key, i);
+              return (
+                <Pressable key={key} onPress={() => setChosen(key)} accessibilityRole="radio" accessibilityState={{ checked: on }}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderRadius: 16, borderWidth: 2, borderColor: on ? color.accent : color.line, backgroundColor: on ? color.accentSoft : color.surface }}>
+                  <View style={{ width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: on ? color.accent : color.line, alignItems: 'center', justifyContent: 'center' }}>
+                    {on ? <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: color.accent }} /> : null}
+                  </View>
+                  <View style={{ flex: 1, gap: 2 }}>
+                    <T v="bodyStrong">{weekName(i)} · {weekRangeLabel(keyToDate(key), lang)}</T>
+                    <T v="caption" c={n ? 'error' : 'muted'}>
+                      {[i === 0 ? t('copyFromToday') : null, n ? t('copyReplaces', { n: num(n, lang) }) : t('copyEmpty')].filter(Boolean).join(' · ')}
+                    </T>
+                  </View>
+                </Pressable>
+              );
+            })}
           </View>
-        ) : (
-          <View style={{ width: 176, height: 176, borderRadius: 88, backgroundColor: color.surface, alignItems: 'center', justifyContent: 'center' }}>
-            <View style={{ width: 126, height: 126, borderRadius: 63, backgroundColor: post.photo[1] }} />
+          <Button label={t('copyDo')} onPress={() => { copyWeekFrom(cook.plan, theirs, chosen); onClose(); showWeek(chosen); }} />
+          <Pressable onPress={onClose} hitSlop={8} style={{ alignSelf: 'center' }}><T v="bodyStrong" c="muted">{t('cancel')}</T></Pressable>
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+/** A recipe someone you follow posted: who and when, a big photo, and quick actions. */
+function Post({ r, reactions }) {
+  const { state, t, copyRecipe } = useStore();
+  const { open } = useNav();
+  const hours = r.created ? (Date.now() - new Date(r.created).getTime()) / 36e5 : 0;
+  const name = r.ownerName || t('noName');
+  const copied = state.custom.some(x => x.copiedFrom === r.cloud);
+  const openRecipe = () => open('recipe', { recipe: r, canCopy: true });
+  return (
+    <Card style={{ padding: 0, gap: 0, overflow: 'hidden' }}>
+      <Pressable onPress={() => open('profile', { id: r.owner })} accessibilityRole="button" accessibilityLabel={name}>
+        <Row gap={10} style={{ padding: 12 }}>
+          <Avatar letter={name[0]} size={38} ring />
+          <View style={{ flex: 1 }}>
+            <T v="bodyStrong" numberOfLines={1}>{name}</T>
+            {r.created ? <T v="caption" c="muted">{timeAgo(hours, t)}</T> : null}
           </View>
-        )}
+        </Row>
       </Pressable>
-
-      <Row gap={16} style={{ paddingHorizontal: 16 }}>
-        <Pressable onPress={() => toggleLike(post.id)} hitSlop={8} accessibilityRole="button" accessibilityState={{ selected: liked }} accessibilityLabel={t('like')}>
-          <Icon name="heart" c={liked ? 'kids' : 'ink'} size={24} w={liked ? 2.4 : 1.9} />
-        </Pressable>
-        <View accessible accessibilityLabel={t('comments', { n: post.comments })}><Icon name="chat" size={24} /></View>
-        <Pressable onPress={() => toggleSave(post.id)} hitSlop={8} accessibilityRole="button" accessibilityState={{ selected: saved }} accessibilityLabel={t('save')}>
-          <Icon name="save" c={saved ? 'accent' : 'ink'} size={24} w={saved ? 2.4 : 1.9} />
-        </Pressable>
-        <View style={{ flex: 1 }} />
-        {post.kind === 'week'
-          ? <Pill label={t('copyPlan')} active c="accent" soft="accentSoft" onPress={() => { copyPlan(cook.id); go('week'); }} />
-          : <Pill label={t('addToWeek')} active={!picking} c="accent" soft="accentSoft" onPress={() => setPicking(p => !p)} />}
-      </Row>
-
-      {picking && recipe ? (
-        <View style={{ paddingHorizontal: 16, gap: 8 }}>
-          <T v="label" c="muted">{t('pickDay')}</T>
-          <Row gap={6} style={{ flexWrap: 'wrap' }}>
-            {[0, 1, 2, 3, 4, 5, 6].map(d => <Pill key={d} label={dayName(d, lang)} onPress={() => { setDay(d, recipe.id); setPicking(false); }} />)}
+      <Pressable onPress={openRecipe} accessibilityRole="button" accessibilityLabel={r.name}>
+        <View>
+          <PhotoSlider photos={r.photos} height={280} radius={0} empty={<FoodArt height={280} radius={0} meal={mealOf(r)} />} />
+          <Row gap={5} style={{ position: 'absolute', top: 12, start: 12, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 99, paddingHorizontal: 10, paddingVertical: 4 }}>
+            <Icon name="clock" c="#fff" size={13} />
+            <T v="label" c="#fff" style={{ fontFamily: font.medium }}>{r.time} {t('min')}</T>
           </Row>
         </View>
-      ) : null}
-
-      <View style={{ paddingHorizontal: 16, gap: 6 }}>
-        <T v="bodyStrong">{t('likes', { n: num(post.likes + (liked ? 1 : 0), lang) })} · {t('saves', { n: num(post.saves + (saved ? 1 : 0), lang) })}</T>
-        {recipe ? <T v="bodyStrong" c="accent">{pick(recipe.name, lang)} · {recipe.time} {t('min')} · {money(cost(recipe, state.servings), lang)}</T> : null}
-        <T>{pick(post.text, lang)}</T>
-        {recipe ? <Row gap={6} style={{ flexWrap: 'wrap' }}>{recipe.tags.map(k => <Tag key={k} k={k} />)}</Row> : null}
-        <T v="caption" c="muted">{t('comments', { n: num(post.comments, lang) })}</T>
+      </Pressable>
+      <View style={{ padding: 14, gap: 8 }}>
+        <Row gap={12}>
+          <ReactionBar recipeId={r.cloud} recipeName={r.name} owner={r.owner} reactions={reactions.of(r.cloud)} onToggle={reactions.toggle} size={24} />
+          <View style={{ flex: 1 }} />
+          {r.copiedFromMe ? <CopiedNote recipe={r} />
+            : copied ? <Row gap={4}><Icon name="check" c="muted" size={14} /><T v="label" c="muted">{t('copiedRecipe')}</T></Row>
+            : <Pill label={t('copyRecipe')} active c="onAccent" soft="accent" onPress={() => copyRecipe(r)} />}
+        </Row>
+        <Pressable onPress={openRecipe} style={{ gap: 6 }}>
+          <T v="title" numberOfLines={2}>{r.name}</T>
+          {r.desc ? <T c="muted" numberOfLines={2}>{pick(r.desc, state.lang)}</T> : null}
+          {r.tags.length ? <Row gap={6} style={{ flexWrap: 'wrap' }}>{r.tags.map(k => <Tag key={k} k={k} />)}</Row> : null}
+        </Pressable>
       </View>
     </Card>
   );
 }
 
-export default function Feed({ only }) {
-  const { state, t } = useStore();
-  const { go, showFeedOf } = useNav();
-  const posts = feedFor(state.following, only);
-  const onlyName = only ? pick(COOKS.find(c => c.id === only).name, state.lang) : null;
-
-  const header = (
-    <View style={{ gap: 14, paddingBottom: 4 }}>
-      <Row gap={12}>
-        <MenuButton />
-        <T v="display" style={{ flex: 1 }}>{t('feed')}</T>
-        <RoundButton icon="plus" c="accent" bg="accentSoft" label={t('addRecipe')} onPress={() => go('recipes')} />
-      </Row>
-      <Stories active={only} onCook={id => showFeedOf(id === only ? null : id)} onMore={() => go('community')} />
-      {only ? (
-        <Row gap={8}>
-          <T v="caption" c="muted" style={{ flex: 1 }}>{t('postsBy', { n: onlyName })}</T>
-          <Pill label={t('showAll')} onPress={() => showFeedOf(null)} />
-        </Row>
-      ) : <T v="caption" c="muted">{t('feedFrom')}</T>}
-    </View>
+/** The people you follow, as a row of round faces. */
+function Cooks({ cooks }) {
+  const { t } = useStore();
+  const { open, go } = useNav();
+  return (
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -22 }} contentContainerStyle={{ gap: 14, paddingHorizontal: 22, paddingVertical: 2 }}>
+      {cooks.map(c => (
+        <Pressable key={c.id} onPress={() => open('profile', { id: c.id })} accessibilityRole="button" accessibilityLabel={c.name || t('noName')} style={{ alignItems: 'center', gap: 6, width: 64 }}>
+          <Avatar letter={(c.name || '?')[0]} size={54} ring />
+          <T v="label" center numberOfLines={1}>{c.name || t('noName')}</T>
+        </Pressable>
+      ))}
+      <Pressable onPress={() => go('community')} accessibilityRole="button" accessibilityLabel={t('findCooks')} style={{ alignItems: 'center', gap: 6, width: 64 }}>
+        <View style={{ width: 59, height: 59, borderRadius: 30, backgroundColor: color.accentSoft, alignItems: 'center', justifyContent: 'center' }}>
+          <Icon name="plus" c="accent" />
+        </View>
+        <T v="label" c="muted" center numberOfLines={1}>{t('moreCooks')}</T>
+      </Pressable>
+    </ScrollView>
   );
+}
+
+/** Newest recipes from people you follow. Pull down to load again. */
+export default function Feed() {
+  const { user, t } = useStore();
+  const { go } = useNav();
+  const [feed, setFeed] = useState(null); // { posts, cooks }
+  const [failed, setFailed] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const reactions = useReactions((feed?.posts || []).map(r => r.cloud));
+  const load = useCallback(() => {
+    setFailed(false);
+    return feedOf(user?.id).then(setFeed).catch(() => setFailed(true));
+  }, [user?.id]);
+  useEffect(() => { load(); }, [load]);
+  const refresh = () => { setRefreshing(true); reactions.reload(); load().finally(() => setRefreshing(false)); };
 
   return (
-    <View style={ui.screen}>
-      <SafeAreaView edges={['top']} style={{ flex: 1 }}>
-        <FlatList
-          data={posts}
-          keyExtractor={p => p.id}
-          renderItem={({ item }) => <Post post={item} />}
-          ListHeaderComponent={header}
-          ListEmptyComponent={
-            <Card style={{ alignItems: 'center', gap: 12 }}>
-              <T c="muted" center>{t('feedEmpty')}</T>
-              <Button label={t('findCooks')} onPress={() => go('community')} />
-            </Card>
-          }
-          contentContainerStyle={[ui.content, { gap: 16 }]}
-          showsVerticalScrollIndicator={false}
-        />
-      </SafeAreaView>
-    </View>
+    <Screen refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={color.accent} />}>
+      <Header title={t('feed')} sub={t('feedSub')} />
+      {failed ? <T c="error">{t('eNetwork')}</T> : null}
+      {!feed && !failed ? <ActivityIndicator color={color.accent} /> : null}
+      {feed?.cooks.length ? <Cooks cooks={feed.cooks} /> : null}
+      {feed && !feed.posts.length ? (
+        <Card style={{ padding: 0, overflow: 'hidden', gap: 0 }}>
+          <FoodArt height={160} radius={0} />
+          <View style={{ padding: 18, gap: 12, alignItems: 'center' }}>
+            <T c="muted" center>{t('feedEmpty')}</T>
+            <Button label={t('findCooks')} onPress={() => go('community')} />
+          </View>
+        </Card>
+      ) : null}
+      {(feed?.posts || []).map(r => <Post key={r.id} r={r} reactions={reactions} />)}
+    </Screen>
   );
 }

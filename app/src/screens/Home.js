@@ -1,135 +1,149 @@
-// Home: greeting, cooks you follow (stories), tonight's dinner, week at a glance, shortcuts.
-import React from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+// Home: greeting, tonight's dinner, the week at a glance and my recipes.
+import React, { useEffect, useState } from 'react';
+import { Image, Pressable, View } from 'react-native';
 import { useStore } from '../store';
 import { useNav } from '../nav';
-import { COOKS, cost, dayName, firstName, greetingKey, money, pick, prepPlan, shoppingList, num } from '../logic';
-import { color, radius, tagColor } from '../theme';
-import { Avatar, Button, Card, Icon, MenuButton, Row, Screen, T, Tag } from '../components/ui';
+import { dayName, firstName, greetingKey, mealOf, num, pick, weekKey } from '../logic';
+import { color, font } from '../theme';
+import { Avatar, Card, Icon, MenuButton, Row, Screen, SearchButton, T } from '../components/ui';
+import FoodArt from '../components/FoodArt';
+import { RecipeList } from './Recipes';
+import { isDemo } from '../auth';
+import { myConnections } from '../social';
 
-export function Stories({ onCook, onMore, active }) {
+/** Tonight's dinner, or a nudge to choose one. */
+function Tonight({ recipe, onOpen, onPick }) {
   const { state, t } = useStore();
-  const cooks = COOKS.filter(c => state.following.includes(c.id));
-  return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 14, paddingVertical: 4 }} style={{ marginHorizontal: -22 }}>
-      <View style={{ width: 8 }} />
-      {cooks.map(c => {
-        const [fg, bg] = tagColor[c.modes[0]];
-        const name = pick(c.name, state.lang);
-        return (
-          <Pressable key={c.id} onPress={() => onCook(c.id)} accessibilityRole="button" accessibilityLabel={t('postsBy', { n: name })}
-            style={{ alignItems: 'center', gap: 6, width: 68, opacity: active && active !== c.id ? 0.5 : 1 }}>
-            <Avatar letter={name[0]} fg={fg} bg={bg} size={56} ring />
-            <T v="label" center numberOfLines={1}>{name}</T>
+  if (!recipe) {
+    return (
+      <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+        <View style={{ width: 84, height: 84, borderRadius: 20, overflow: 'hidden' }}><FoodArt height={84} radius={20} /></View>
+        <View style={{ flex: 1, gap: 6 }}>
+          <T v="heading">{t('tonightEmpty')}</T>
+          <T v="caption" c="muted">{t('tonightHint')}</T>
+          <Pressable onPress={onPick} hitSlop={6} accessibilityRole="button" style={{ alignSelf: 'flex-start' }}>
+            <Row gap={6}><Icon name="plus" c="accent" size={16} /><T v="bodyStrong" c="accent">{t('tonightPick')}</T></Row>
           </Pressable>
-        );
-      })}
-      <Pressable onPress={onMore} accessibilityRole="button" style={{ alignItems: 'center', gap: 6, width: 68 }}>
-        <View style={{ width: 61, height: 61, borderRadius: 31, backgroundColor: color.accentSoft, alignItems: 'center', justifyContent: 'center' }}>
-          <Icon name="plus" c="accent" />
         </View>
-        <T v="label" c="muted" center numberOfLines={1}>{t('moreCooks')}</T>
-      </Pressable>
-      <View style={{ width: 8 }} />
-    </ScrollView>
+      </Card>
+    );
+  }
+  return (
+    <Pressable onPress={onOpen} accessibilityRole="button" accessibilityLabel={`${t('tonight')}: ${pick(recipe.name, state.lang)}`}>
+      <Card style={{ padding: 0, overflow: 'hidden', gap: 0 }}>
+        <View>
+          {recipe.photos?.[0] ? <Image source={{ uri: recipe.photos[0] }} style={{ width: '100%', height: 190 }} resizeMode="cover" /> : <FoodArt height={190} radius={0} meal={mealOf(recipe)} />}
+          <View style={{ position: 'absolute', top: 12, start: 12, backgroundColor: color.accent, borderRadius: 99, paddingHorizontal: 12, paddingVertical: 5 }}>
+            <T v="label" c="onAccent" style={{ fontFamily: font.medium }}>{t('tonight')}</T>
+          </View>
+        </View>
+        <View style={{ padding: 16, gap: 6 }}>
+          <T v="title" numberOfLines={2}>{pick(recipe.name, state.lang)}</T>
+          <Row gap={6}><Icon name="clock" c="muted" size={16} /><T v="caption" c="muted">{recipe.time} {t('min')}</T></Row>
+        </View>
+      </Card>
+    </Pressable>
   );
 }
 
-function Plate({ height = 130, colors = ['#F6E3DA', '#E59A86'] }) {
+/** The week at a glance: a dot for each day, filled when a dinner is planned. */
+function WeekStrip({ plan, today, onPress }) {
+  const { state, t } = useStore();
+  const planned = plan.filter(Boolean).length;
   return (
-    <View style={{ height, borderRadius: 18, backgroundColor: colors[0], alignItems: 'center', justifyContent: 'center' }}>
-      <View style={{ width: height * 0.7, height: height * 0.7, borderRadius: height, backgroundColor: color.surface, alignItems: 'center', justifyContent: 'center' }}>
-        <View style={{ width: height * 0.5, height: height * 0.5, borderRadius: height, backgroundColor: colors[1] }} />
-      </View>
-    </View>
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={t('planned', { n: planned })}>
+      <Card style={{ gap: 10, paddingVertical: 14 }}>
+        <Row style={{ justifyContent: 'space-between' }}>
+          <T v="bodyStrong">{t('yourWeek')}</T>
+          <T v="caption" c="muted">{t('planned', { n: num(planned, state.lang) })}</T>
+        </Row>
+        <Row style={{ justifyContent: 'space-between' }}>
+          {[0, 1, 2, 3, 4, 5, 6].map(d => {
+            const on = !!plan[d];
+            const isToday = d === today;
+            return (
+              <View key={d} style={{ alignItems: 'center', gap: 4 }}>
+                <View style={{ width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center',
+                  backgroundColor: on ? color.accent : color.bg, borderWidth: isToday ? 2 : 0, borderColor: color.accent }}>
+                  {on ? <Icon name="check" c="onAccent" size={16} w={2.6} /> : null}
+                </View>
+                <T v="label" c={isToday ? 'accent' : 'muted'} style={isToday ? { fontFamily: font.medium } : null}>{state.lang === 'he' ? 'אבגדהוש'[d] : dayName(d, state.lang).slice(0, 2)}</T>
+              </View>
+            );
+          })}
+        </Row>
+      </Card>
+    </Pressable>
+  );
+}
+
+/** How many people follow you and you follow, as a number with its name under it. A dot means new requests. */
+function People({ me }) {
+  const { state, t } = useStore();
+  const { open } = useNav();
+  const [counts, setCounts] = useState(null);
+  useEffect(() => {
+    if (isDemo || !me) return undefined;
+    let live = true;
+    myConnections(me).then(c => {
+      if (live) setCounts({ followers: c.followers.length, following: c.following.filter(p => p.status === 'approved').length, requests: c.requests.length });
+    }).catch(() => {});
+    return () => { live = false; };
+  }, [me]);
+  if (!counts) return null;
+  // Tapping one opens that list.
+  const stat = (n, label, tab, dot) => (
+    <Pressable onPress={() => open('people', { tab })} accessibilityRole="button" accessibilityLabel={`${num(n, state.lang)} ${label}`} hitSlop={6}
+      style={({ pressed }) => ({ alignItems: 'center', minWidth: 52, opacity: pressed ? 0.6 : 1 })}>
+      <Row gap={4}>
+        <T v="bodyStrong">{num(n, state.lang)}</T>
+        {dot ? <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: color.accent }} /> : null}
+      </Row>
+      <T v="label" c="muted" numberOfLines={1}>{label}</T>
+    </Pressable>
+  );
+  return (
+    <Row gap={10} style={{ backgroundColor: color.surface, borderRadius: 18, borderWidth: 1, borderColor: color.edge, paddingHorizontal: 10, paddingVertical: 4 }}>
+      {stat(counts.followers, t('followers_tab'), counts.requests ? 'requests' : 'followers', counts.requests > 0)}
+      <View style={{ width: 1, alignSelf: 'stretch', marginVertical: 4, backgroundColor: color.edge }} />
+      {stat(counts.following, t('followingTab'), 'followingTab')}
+    </Row>
   );
 }
 
 export default function Home() {
-  const { state, user, t, byId } = useStore();
-  const { go, open, showFeedOf } = useNav();
+  const { state, user, t, byId, recipes, syncFailed } = useStore();
+  const { go, open } = useNav();
   const lang = state.lang;
   const now = new Date();
   const today = now.getDay(); // 0 = Sunday, same as the plan
-  const dishes = state.plan.map(byId);
-  const tonight = dishes[today];
-  const spent = dishes.filter(Boolean).reduce((s, r) => s + cost(r, state.servings), 0);
-  const items = shoppingList(dishes.filter(Boolean), state.servings);
-  const left = items.filter(i => !state.checked[i.key]).length;
-  const prep = prepPlan(dishes.filter(Boolean), state.servings);
   const name = user?.name || firstName(user);
   const greet = t(greetingKey(now.getHours()), { n: name }).replace(/[,،]\s*$/, '');
-  const show = state.homeShows;
 
   return (
     <Screen>
       <Row gap={12}>
         <MenuButton />
         <View style={{ flex: 1 }} />
+        <SearchButton />
+        <People me={user?.id} />
         <Pressable onPress={() => go('settings')} accessibilityRole="button" accessibilityLabel={t('settings')}>
           <Avatar letter={name[0]} size={40} />
         </Pressable>
       </Row>
       <View style={{ gap: 2 }}>
         <T v="display">{greet}</T>
-        <T v="caption" c="muted">{t('homeSub', { d: dayName(today, lang), p: t('people', { n: state.servings }), b: money(Math.max(0, state.budget - spent), lang) })}</T>
+        <T v="caption" c="muted">{t('homeSub', { d: dayName(today, lang), p: t('people', { n: state.servings }) })}</T>
       </View>
 
-      {show.stories ? <Stories onCook={id => showFeedOf(id)} onMore={() => go('community')} /> : null}
+      {syncFailed ? <View style={{ backgroundColor: color.errorSoft, borderRadius: 16, padding: 12 }}><T v="caption" c="error">{t('syncFailed')}</T></View> : null}
 
-      {show.tonight ? (
-        <Card style={{ gap: 12, paddingTop: 12 }}>
-          {tonight?.photos?.[0] ? null : <Plate />}
-          <Row style={{ justifyContent: 'space-between' }}>
-            <T v="label" c="accent">{t('tonight')}</T>
-            <Row gap={6}>{(tonight?.tags || []).slice(0, 2).map(k => <Tag key={k} k={k} />)}</Row>
-          </Row>
-          {tonight ? <>
-            <T v="title">{pick(tonight.name, lang)}</T>
-            <T v="caption" c="muted">{tonight.time} {t('min')} · {money(cost(tonight, state.servings), lang)}{tonight.kid ? ` · ${t('forKids')} ${pick(tonight.kid, lang)}` : ''}</T>
-            <Button kind="secondary" label={t('viewRecipe')} onPress={() => open('recipe', { id: tonight.id, day: today })} />
-          </> : <Button kind="secondary" label={t('planTonight')} onPress={() => go('week')} />}
-        </Card>
-      ) : null}
+      <Tonight recipe={byId(state.plan[today])} onOpen={() => open('recipe', { id: state.plan[today] })}
+        onPick={() => open('pick', { week: weekKey(), day: today })} />
+      <WeekStrip plan={state.plan} today={today} onPress={() => go('week')} />
 
-      {show.week ? (
-        <View style={{ gap: 8 }}>
-          <T v="label" c="muted">{t('weekGlance')}</T>
-          <Row gap={6}>
-            {[0, 1, 2, 3, 4, 5, 6].map(d => {
-              const on = d === today;
-              return (
-                <Pressable key={d} onPress={() => go('week')} accessibilityRole="button" accessibilityLabel={dayName(d, lang)}
-                  style={{ flex: 1, alignItems: 'center', gap: 4, paddingVertical: 10, borderRadius: 16, backgroundColor: on ? color.accent : color.surface }}>
-                  <T v="label" c={on ? 'onAccent' : 'ink'} center numberOfLines={1}>{dayName(d, lang).slice(0, lang === 'he' ? 1 : 2)}</T>
-                  <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: dishes[d] ? (on ? color.onAccent : color.accent) : color.line }} />
-                </Pressable>
-              );
-            })}
-          </Row>
-        </View>
-      ) : null}
-
-      {show.shortcuts ? (
-        <Row gap={10} style={{ alignItems: 'stretch' }}>
-          <Pressable style={{ flex: 1 }} onPress={() => open('prep')}>
-            <Card style={{ gap: 6 }}>
-              <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: color.accentSoft, alignItems: 'center', justifyContent: 'center' }}><Icon name="pot" c="accent" size={18} /></View>
-              <T v="bodyStrong">{t('tab_prep')}</T>
-              <T v="caption" c="muted">{t('prepInfo', { n: num(prep.recipes.length, lang), h: num(prep.hours, lang) })}</T>
-            </Card>
-          </Pressable>
-          <Pressable style={{ flex: 1 }} onPress={() => go('shop')}>
-            <Card style={{ gap: 6 }}>
-              <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: color.budgetSoft, alignItems: 'center', justifyContent: 'center' }}><Icon name="shop" c="budget" size={18} /></View>
-              <T v="bodyStrong">{t('tab_shop')}</T>
-              <T v="caption" c="muted">{t('shopLeft', { n: num(left, lang) })}</T>
-            </Card>
-          </Pressable>
-        </Row>
-      ) : null}
+      <T v="title" style={{ marginTop: 6 }}>{t('myRecipes')} <T v="title" c="muted">· {num(recipes.length, lang)}</T></T>
+      <RecipeList open={open} />
     </Screen>
   );
 }
-
-export { Plate };

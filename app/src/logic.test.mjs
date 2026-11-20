@@ -1,9 +1,25 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { R, makeT, planWeek, swapDay, shoppingList, fmtQty, validateRecipe, prepPlan, cost, money, validateSignIn, validateSignUp, greetingKey, timeAgo, feedFor, firstName } from './logic.js';
+import { makeT, mergeMine, mealOf, mealsOf, mealPlan, weekDishIds, planWeek, swapDay, shoppingList, fmtQty, validateRecipe, prepPlan, cost, money, validateSignIn, validateSignUp, greetingKey, timeAgo, firstName } from './logic.js';
 
 const seeded = (seed = 1) => () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
 const t = makeT('en');
+
+// Recipes made up for these tests. Ingredient: [name, qty for 4, unit, aisle, ₪ per unit].
+const mk = (id, time, tags, ing, m = 'stove') => ({ id, name: id, time, m, tags, ing, custom: true });
+const eggs = ['ביצים', 8, 'יח׳', 'dairy', 1.2];
+const onion = ['בצל', 2, 'יח׳', 'veg', 1];
+const R = [
+  mk('Shakshuka', 20, ['quick', 'budget', 'kids'], [eggs, onion]),
+  mk('Omelette', 10, ['quick', 'kids'], [eggs]),
+  mk('Pasta', 20, ['quick', 'budget'], [['פסטה', 500, 'גרם', 'pantry', 0.01], onion]),
+  mk('Stir-fry', 20, ['quick'], [['חזה עוף', 600, 'גרם', 'meat', 0.04], onion]),
+  mk('Quesadilla', 15, ['quick', 'kids'], [['טורטיות', 8, 'יח׳', 'bakery', 1]]),
+  mk('Fried rice', 20, ['quick', 'budget'], [['אורז', 400, 'גרם', 'pantry', 0.01], eggs]),
+  mk('Drumsticks', 60, ['prep', 'kids'], [['שוקי עוף', 1500, 'גרם', 'meat', 0.03], ['תפוחי אדמה', 1000, 'גרם', 'veg', 0.005]], 'oven'),
+  mk('Curry', 30, ['prep', 'budget'], [['חומוס', 500, 'גרם', 'pantry', 0.01], onion]),
+  mk('Lentil soup', 40, ['prep', 'budget'], [['עדשים', 400, 'גרם', 'pantry', 0.01], onion]),
+];
 
 test('plan has 7 different dishes', () => {
   const p = planWeek(R, { kids: true }, seeded(3));
@@ -26,7 +42,7 @@ test('swap changes only that day', () => {
 });
 
 test('shopping list merges the same ingredient and scales with people', () => {
-  const two = R.filter(r => ['shak', 'omelet'].includes(r.id));
+  const two = R.filter(r => ['Shakshuka', 'Omelette'].includes(r.id));
   const eggs = shoppingList(two, 4).find(i => i.n === 'ביצים');
   assert.equal(eggs.q, 16);
   assert.equal(shoppingList(two, 2).find(i => i.n === 'ביצים').q, 8);
@@ -35,11 +51,23 @@ test('shopping list merges the same ingredient and scales with people', () => {
 test('quantities are rounded and translated', () => {
   assert.equal(fmtQty(1250, 'גרם', 'en'), '1.25 kg');
   assert.equal(fmtQty(2.2, 'יח׳', 'ru'), '3 шт.');
-  assert.equal(fmtQty(130, 'גרם', 'he'), '150 גרם');
+  assert.equal(fmtQty(130, 'גרם', 'he'), '130 גרם');
+  assert.equal(fmtQty(20, 'גרם', 'he'), '20 גרם');
+});
+
+test('amounts written for 4 scale to any number of people', () => {
+  // What the recipe page shows: amount × people ÷ 4. Only whole things round up.
+  assert.equal(fmtQty(500 * 8 / 4, 'גרם', 'he'), '1 ק״ג');
+  assert.equal(fmtQty(500 * 6 / 4, 'גרם', 'he'), '750 גרם');
+  assert.equal(fmtQty(500 * 5 / 4, 'גרם', 'he'), '625 גרם');
+  assert.equal(fmtQty(130 * 5 / 4, 'מ״ל', 'he'), '163 מ״ל');
+  assert.equal(fmtQty(3 * 5 / 4, 'יח׳', 'he'), '4 יח׳'); // 3¾ eggs → 4
+  assert.equal(fmtQty(2 * 6 / 4, 'כף', 'he'), '3 כף');
+  assert.equal(fmtQty(1 * 5 / 4, 'כפית', 'he'), '1.25 כפית');
 });
 
 test('cost scales with servings', () => {
-  const shak = R.find(r => r.id === 'shak');
+  const shak = R.find(r => r.id === 'Shakshuka');
   assert.ok(Math.abs(cost(shak, 8) - 2 * cost(shak, 4)) < 1e-9);
   assert.equal(money(1234.4, 'en'), '₪1,234');
 });
@@ -56,7 +84,7 @@ test('valid recipe passes', () => {
 
 test('validation catches each rule', () => {
   assert.equal(validateRecipe({ ...good, name: 'x' }, R, t).errors.name, t('eNameShort'));
-  assert.equal(validateRecipe({ ...good, name: 'Shakshuka with bread' }, R, t).errors.name, t('eNameDup'));
+  assert.equal(validateRecipe({ ...good, name: 'shakshuka' }, R, t).errors.name, t('eNameDup'));
   assert.equal(validateRecipe({ ...good, time: '3' }, R, t).errors.time, t('eTimeRange'));
   assert.equal(validateRecipe({ ...good, time: '20.5' }, R, t).errors.time, t('eTimeRange'));
   assert.equal(validateRecipe({ ...good, steps: 'Cook.' }, R, t).errors.steps, t('eStepsShort'));
@@ -72,8 +100,8 @@ test('kid note kept only with the kids tag', () => {
 });
 
 test('big cook groups oven and stove dishes', () => {
-  const p = prepPlan(R.filter(r => ['chicken', 'curry', 'soup'].includes(r.id)), 4);
-  assert.deepEqual(p.oven.map(r => r.id), ['chicken']);
+  const p = prepPlan(R.filter(r => ['Drumsticks', 'Curry', 'Lentil soup'].includes(r.id)), 4);
+  assert.deepEqual(p.oven.map(r => r.id), ['Drumsticks']);
   assert.equal(p.stove.length, 2);
   assert.ok(p.chop.length > 0);
 });
@@ -81,7 +109,7 @@ test('big cook groups oven and stove dishes', () => {
 test('every language has the strings the app uses', () => {
   for (const lang of ['he', 'en', 'ru']) {
     const tt = makeT(lang);
-    for (const k of ['app', 'obTitle', 'tab_week', 'eNameReq', 'copyPlan', 'openPrep', 'withGoogle', 'logout', 'feedEmpty', 'show_stories']) assert.notEqual(tt(k), k, `${lang}:${k}`);
+    for (const k of ['app', 'obTitle', 'tab_week', 'eNameReq', 'openPrep', 'withGoogle', 'logout', 'feedEmpty']) assert.notEqual(tt(k), k, `${lang}:${k}`);
   }
 });
 
@@ -105,14 +133,6 @@ test('greeting follows the time of day', () => {
   assert.equal(greetingKey(21), 'goodEvening');
 });
 
-test('feed shows only followed cooks, newest first', () => {
-  const f = feedFor(['noa', 'yossi']);
-  assert.ok(f.length > 0 && f.every(p => ['noa', 'yossi'].includes(p.cook)));
-  assert.deepEqual(f.map(p => p.hours), [...f.map(p => p.hours)].sort((a, b) => a - b));
-  assert.ok(feedFor(['noa'], 'noa').every(p => p.cook === 'noa'));
-  assert.deepEqual(feedFor([]), []);
-});
-
 test('time ago and first name', () => {
   assert.equal(timeAgo(2, t), t('hoursAgo', { n: 2 }));
   assert.equal(timeAgo(30, t), t('yesterday'));
@@ -121,11 +141,66 @@ test('time ago and first name', () => {
   assert.equal(firstName({ email: 'tanya@example.com' }), 'tanya');
 });
 
-test('every feed post points to a real cook and recipe', async () => {
-  const { POSTS, COOKS } = await import('./logic.js');
-  for (const p of POSTS) {
-    assert.ok(COOKS.some(c => c.id === p.cook), p.id);
-    if (p.kind === 'recipe') assert.ok(R.some(r => r.id === p.recipe), p.id);
-    for (const l of ['he', 'en', 'ru']) assert.ok(p.text[l], p.id + l);
-  }
+test('the database wins on sign-in, except changes not saved yet', () => {
+  const r = (id, cloud, extra = {}) => ({ id, cloud, name: id, ...extra });
+  const local = {
+    custom: [
+      r('c1', 'u1', { name: 'old name', serves: 2 }), // saved, the database has a newer version
+      r('c2', 'u2', { dirty: 5, name: 'edited here' }), // edited here, not saved yet
+      r('c3', 'u3'), // saved, then deleted on another phone
+      r('c4', undefined), // not saved yet
+    ],
+    weeks: { '2026-11-01': ['c1', 'c4', null, null, null, null, null], '2026-11-08': ['c1', null, null, null, null, null, null] },
+  };
+  const server = {
+    recipes: [r('u1', 'u1', { name: 'new name', photos: [], photosSaved: '[]' }), r('u2', 'u2'), r('u5', 'u5', { name: 'from the other phone' })],
+    weeks: { '2026-11-01': ['u5', null, null, null, null, null, null], '2026-11-08': ['u5', 'u1', null, null, null, null, null] },
+  };
+  const m = mergeMine(local, server, '2026-11-08');
+  const byId = Object.fromEntries(m.custom.map(x => [x.id, x]));
+  assert.equal(byId.c1.name, 'new name');
+  assert.equal(byId.c1.serves, 2);
+  assert.equal(byId.c2.name, 'edited here');
+  assert.equal(byId.c3, undefined);
+  assert.ok(byId.c4);
+  assert.equal(byId.u5.name, 'from the other phone');
+  assert.deepEqual(m.weeks['2026-11-01'].slice(0, 2), ['c1', 'c4']); // uses a recipe not saved yet: kept
+  assert.deepEqual(m.weeks['2026-11-08'].slice(0, 2), ['u5', 'c1']); // database ids become this phone's ids
+  assert.deepEqual(m.plan, m.weeks['2026-11-08']);
+});
+
+test('a day holds a dish for each meal, and the week lists them all', () => {
+  const state = {
+    weeks: { w: ['a', null, 'b', null, null, null, null] },
+    meals: { w: { breakfast: ['c', null, null, null, null, null, null], dessert: [null, 'a', null, null, null, null, null] } },
+  };
+  assert.deepEqual(mealPlan(state, 'w', 'dinner'), state.weeks.w);
+  assert.deepEqual(mealPlan(state, 'w', 'breakfast'), state.meals.w.breakfast);
+  assert.deepEqual(mealPlan(state, 'w', 'lunch'), []);
+  assert.deepEqual(mealPlan({ weeks: {} }, 'w', 'snack'), []);
+  assert.deepEqual(weekDishIds(state, 'w').sort(), ['a', 'a', 'b', 'c']); // cooked twice: counted twice
+  assert.equal(mealOf({ meal: 'snack' }), 'snack'); // one meal, as recipes saved before lists had it
+  assert.equal(mealOf({}), 'dinner'); // recipes from before meals existed
+  assert.equal(mealOf({ meal: 'brunch' }), 'dinner');
+  assert.deepEqual(mealsOf({ meals: ['dinner', 'lunch', 'brunch'] }), ['lunch', 'dinner']); // the day's order, unknown ones out
+  assert.equal(mealOf({ meals: ['lunch', 'dinner'] }), 'dinner'); // planned as dinner when it suits dinner
+  assert.equal(mealOf({ meals: ['dessert', 'snack'] }), 'snack');
+  assert.deepEqual(mealsOf({ meals: [] }), ['dinner']);
+});
+
+test('a new recipe keeps the meals chosen in the form', () => {
+  const form = { name: 'Pancakes', time: '20', steps: 'Mix it all and fry them until golden.', ing: [{ n: 'Flour', q: '1', u: 'כוס', a: 'pantry' }, { n: 'Egg', q: '2', u: 'יח׳', a: 'dairy' }] };
+  assert.deepEqual(validateRecipe({ ...form, meals: ['dinner', 'lunch'] }, [], t).value.meals, ['lunch', 'dinner']);
+  assert.deepEqual(validateRecipe(form, [], t).value.meals, ['dinner']);
+});
+
+test('other meals merge like dinners, and wait while they use a recipe not saved yet', () => {
+  const r = (id, cloud) => ({ id, cloud, name: id, ing: [], tags: [], photos: [], photosSaved: '[]' });
+  const local = { custom: [r('c1', 'u1'), r('c4', undefined)], weeks: {},
+    meals: { a: { lunch: ['c4', null, null, null, null, null, null] }, b: { lunch: [null, null, null, null, null, null, null] } } };
+  const server = { recipes: [r('u1', 'u1')], weeks: {},
+    meals: { a: { lunch: ['u1', null, null, null, null, null, null] }, b: { breakfast: ['u1', null, null, null, null, null, null] } } };
+  const m = mergeMine(local, server, 'b');
+  assert.deepEqual(m.meals.a.lunch.slice(0, 1), ['c4']);
+  assert.deepEqual(m.meals.b.breakfast.slice(0, 1), ['c1']);
 });

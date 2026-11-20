@@ -1,9 +1,11 @@
-// App state with on-device persistence (AsyncStorage).
-// Later this is replaced by calls to the Python API; the screens don't change.
+// App state with on-device persistence (AsyncStorage), one copy per account.
+// Your own recipes and weekly plans are also saved to Supabase, so followers can see them.
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { R, COOKS, makeT, isRtl, planWeek, swapDay as swap } from './logic';
-import { currentUser, onAuthChange, signOut } from './auth';
+import { OTHER_MEALS, makeT, isRtl, mealsOf, mergeMine, planWeek, swapDay as swap, weekKey } from './logic';
+import * as Linking from 'expo-linking';
+import { currentUser, deleteAccount, handleAuthLink, isDemo, isRecoveryLink, onAuthChange, signOut } from './auth';
+import { deleteCloudRecipe, loadMine, noteCopy, pushMeals, pushRecipe, pushWeek, syncPhotos, syncProfileName, updateCloudRecipe } from './social';
 
 const KEY = 'weekly-plate/v1';
 const DEFAULT = {
@@ -12,59 +14,264 @@ const DEFAULT = {
   modes: { kids: true, budget: true, prep: false, quick: true },
   servings: 4,
   budget: 450,
-  plan: [],
+  plan: [], // this week; the same list is also in weeks
+  weeks: {}, // every saved week's dinners, by weekKey
+  meals: {}, // the other meals of each week: { [weekKey]: { breakfast: [7], lunch, snack, dessert } }
   checked: {},
   custom: [],
-  following: ['noa', 'amit'],
   liked: {},
   saved: {},
-  homeShows: { stories: true, tonight: true, week: true, shortcuts: true },
+  recipeComments: {},
+  theme: 'auto', // auto follows the phone; or light, dark
 };
 
 const Ctx = createContext(null);
+const dinners = custom => custom.filter(r => mealsOf(r).includes('dinner')); // what an automatic plan picks from
+const keyFor = id => (id ? `${KEY}:${id}` : KEY);
+
+// Saves a week's plan. `plan` always follows the week we are in.
+const withPlan = (s, plan, key = weekKey()) => ({ ...s, weeks: { ...s.weeks, [key]: plan }, plan: key === weekKey() ? plan : s.plan });
+
+// Starts each new week empty, and keeps a plan saved before weeks existed.
+// Days that name a recipe you no longer have (such as the removed sample recipes) are emptied.
+function loadSaved(saved) {
+  const key = weekKey();
+  const custom = saved.custom || [];
+  const have = id => custom.some(r => r.id === id);
+  const raw = saved.weeks || (saved.plan?.length ? { [key]: saved.plan } : {});
+  const keep = p => p.map(id => (id && have(id) ? id : null));
+  const weeks = Object.fromEntries(Object.entries(raw).map(([k, p]) => [k, keep(p)]));
+  const meals = Object.fromEntries(Object.entries(saved.meals || {}).map(([k, byMeal]) => [k, Object.fromEntries(Object.entries(byMeal).map(([m, p]) => [m, keep(p)]))]));
+  const { following, homeShows, ...rest } = saved; // sample cooks and their stories, now removed
+  return { ...DEFAULT, ...rest, weeks, meals, plan: weeks[key] || [] };
+}
+
+// Adds a copy of someone's recipe to `custom`, unless it is already there.
+// A name you already use gets the cook's name added, since names are unique per account.
+function copyInto(custom, r) {
+  const have = custom.find(x => x.copiedFrom === r.cloud);
+  if (have) return { custom, id: have.id };
+  const taken = custom.some(x => x.name.toLowerCase() === r.name.toLowerCase());
+  const id = 'c' + Date.now() + Math.random().toString(36).slice(2, 6);
+  // copiedFromName stays on this phone: it isn't sent to the database, so only you see it.
+  const copy = { ...r, id, cloud: undefined, owner: undefined, ownerName: undefined, photosSaved: undefined, copiedFrom: r.cloud, copiedFromName: r.ownerName || '', copyNoted: undefined,
+    name: taken && r.ownerName ? `${r.name} · ${r.ownerName}`.slice(0, 60) : r.name };
+  return { custom: [...custom, copy], id };
+}
+
+// Each account keeps its own data on the phone. The first account to sign in here
+// keeps what was saved before accounts were kept apart.
+async function loadFor(id) {
+  const own = await AsyncStorage.getItem(keyFor(id));
+  if (own) return loadSaved(JSON.parse(own));
+  if (!id) return null;
+  const old = await AsyncStorage.getItem(KEY);
+  if (!old || JSON.parse(old).claimedBy) return null;
+  await AsyncStorage.setItem(KEY, JSON.stringify({ lang: JSON.parse(old).lang, claimedBy: id }));
+  return loadSaved(JSON.parse(old));
+}
+
+// A week as the database stores it: a recipe's database id, a built-in id, or null.
+// Returns null while one of your recipes is not saved yet.
+// A week's other meals as the database stores them, or null while a recipe is not saved yet.
+function cloudMeals(byMeal, custom) {
+  const out = {};
+  for (const m of OTHER_MEALS) {
+    const days = cloudDays(byMeal?.[m] || [], custom);
+    if (!days) return null;
+    out[m] = days;
+  }
+  return out;
+}
+
+function cloudDays(plan, custom) {
+  const days = [];
+  for (let d = 0; d < 7; d += 1) {
+    const id = plan[d];
+    const mine = id && custom.find(r => r.id === id);
+    if (mine && !mine.cloud) return null;
+    days.push(!id ? null : mine ? mine.cloud : id);
+  }
+  return days;
+}
+
 
 export function StoreProvider({ children }) {
   const [state, setState] = useState(DEFAULT);
   const [ready, setReady] = useState(false);
   const [user, setUser] = useState(null);
-  const loaded = useRef(false);
+  const [recovery, setRecovery] = useState(false); // opened from a password reset email
+  const [syncFailed, setSyncFailed] = useState(false); // a recipe or week did not reach the database
+  const loadedFor = useRef(undefined); // the account whose data is in `state`
+  const [syncedFor, setSyncedFor] = useState(undefined); // the account whose data was merged with the database
+  const pushing = useRef(new Set()); // recipes being saved to the database
+  const noting = useRef(new Set()); // copies being recorded for their original cook
+  const pushedWeeks = useRef({}); // what each week looked like when last saved
+  const pushedMeals = useRef({}); // the same for each week's other meals
+
+  const [authChecked, setAuthChecked] = useState(false);
+  const userId = user?.id ?? null;
 
   useEffect(() => {
-    Promise.all([
-      AsyncStorage.getItem(KEY).then(raw => { if (raw) setState(s => ({ ...s, ...JSON.parse(raw), homeShows: { ...DEFAULT.homeShows, ...(JSON.parse(raw).homeShows || {}) } })); }).catch(() => {}),
-      currentUser().then(setUser).catch(() => {}),
-    ]).finally(() => { loaded.current = true; setReady(true); });
-    return onAuthChange(setUser);
+    currentUser().then(setUser).catch(() => {}).finally(() => setAuthChecked(true));
+    const openLink = url => {
+      if (isRecoveryLink(url)) setRecovery(true);
+      return handleAuthLink(url).catch(() => setRecovery(false));
+    };
+    Linking.getInitialURL().then(openLink).catch(() => {});
+    const links = Linking.addEventListener('url', e => { openLink(e.url); });
+    const unsubscribe = onAuthChange(setUser);
+    return () => { links.remove(); unsubscribe(); };
   }, []);
 
-  useEffect(() => {
-    if (loaded.current) AsyncStorage.setItem(KEY, JSON.stringify(state)).catch(() => {});
-  }, [state]);
+  useEffect(() => { syncProfileName(user).catch(() => {}); }, [user]);
 
-  const recipes = useMemo(() => R.concat(state.custom), [state.custom]);
+  // Load the data of whoever is signed in (or the signed-out language) when that changes.
+  useEffect(() => {
+    if (!authChecked) return undefined;
+    let live = true;
+    loadedFor.current = undefined;
+    pushedWeeks.current = {};
+    pushedMeals.current = {};
+    setSyncedFor(undefined);
+    loadFor(userId).catch(() => null).then(saved => {
+      if (!live) return;
+      setState(cur => saved || { ...DEFAULT, lang: cur.lang });
+      loadedFor.current = userId;
+      setReady(true);
+      if (isDemo || !userId) return;
+      loadMine(userId)
+        .then(server => { if (live) setState(cur => mergeMine(cur, server)); })
+        .catch(e => console.warn('Loading from the database failed:', e?.message || e)) // offline: keep what's on the phone
+        .finally(() => { if (live) setSyncedFor(userId); });
+    });
+    return () => { live = false; };
+  }, [userId, authChecked]);
+
+  useEffect(() => {
+    if (loadedFor.current === userId) AsyncStorage.setItem(keyFor(userId), JSON.stringify(state)).catch(() => {});
+  }, [state, userId]);
+
+  // Save your recipes to the database, so followers can see them. Waits until the database was read.
+  useEffect(() => {
+    if (isDemo || !userId || loadedFor.current !== userId || syncedFor !== userId) return;
+    state.custom.filter(r => !r.cloud && !pushing.current.has(r.id)).forEach(r => {
+      pushing.current.add(r.id);
+      pushRecipe(r)
+        .then(({ id: cloud, noted }) => { setSyncFailed(false); setState(s => ({ ...s, custom: s.custom.map(x => (x.id === r.id ? { ...x, cloud, copyNoted: noted || undefined } : x)) })); })
+        .catch(e => { console.warn('Recipe upload failed:', e?.message || e); setSyncFailed(true); })
+        .finally(() => pushing.current.delete(r.id));
+    });
+    // Recipes changed after they were saved. `dirty` is when, so a newer change is not lost.
+    state.custom.filter(r => r.cloud && r.dirty && !pushing.current.has(r.id)).forEach(r => {
+      pushing.current.add(r.id);
+      updateCloudRecipe(r.cloud, r)
+        .then(() => { setSyncFailed(false); setState(s => ({ ...s, custom: s.custom.map(x => (x.id === r.id && x.dirty === r.dirty ? { ...x, dirty: undefined } : x)) })); })
+        .catch(e => { console.warn('Recipe update failed:', e?.message || e); setSyncFailed(true); })
+        .finally(() => pushing.current.delete(r.id));
+    });
+    // A saved copy tells the cook it came from, once.
+    state.custom.filter(r => r.cloud && r.copiedFrom && !r.copyNoted && !noting.current.has(r.id)).forEach(r => {
+      noting.current.add(r.id);
+      noteCopy(r.cloud, r.copiedFrom)
+        .then(() => setState(s => ({ ...s, custom: s.custom.map(x => (x.id === r.id ? { ...x, copyNoted: true } : x)) })))
+        .catch(e => console.warn('Copy note not saved:', e?.message || e))
+        .finally(() => noting.current.delete(r.id));
+    });
+    // Photos follow once the recipe itself is saved. `photosSaved` is the list last saved.
+    state.custom.filter(r => r.cloud && !r.dirty && !pushing.current.has(r.id) && JSON.stringify(r.photos || []) !== r.photosSaved).forEach(r => {
+      const sent = JSON.stringify(r.photos || []);
+      pushing.current.add(r.id);
+      syncPhotos(userId, r.cloud, r.photos || [])
+        .then(urls => setState(s => ({ ...s, custom: s.custom.map(x => (x.id === r.id && JSON.stringify(x.photos || []) === sent ? { ...x, photos: urls, photosSaved: JSON.stringify(urls) } : x)) })))
+        .catch(e => { console.warn('Photo upload failed:', e?.message || e); setSyncFailed(true); })
+        .finally(() => pushing.current.delete(r.id));
+    });
+  }, [state.custom, userId, syncedFor]);
+
+  // Save changed weeks a moment after the last change.
+  useEffect(() => {
+    if (isDemo || !userId || loadedFor.current !== userId || syncedFor !== userId) return undefined;
+    const timer = setTimeout(() => {
+      Object.entries(state.weeks).forEach(([key, plan]) => {
+        const days = cloudDays(plan, state.custom);
+        const json = JSON.stringify(days);
+        if (!days || pushedWeeks.current[key] === json) return;
+        pushedWeeks.current[key] = json;
+        pushWeek(key, days).catch(e => { console.warn('Week upload failed:', e?.message || e); setSyncFailed(true); delete pushedWeeks.current[key]; });
+      });
+      Object.entries(state.meals || {}).forEach(([key, byMeal]) => {
+        const meals = cloudMeals(byMeal, state.custom);
+        const json = JSON.stringify(meals);
+        if (!meals || pushedMeals.current[key] === json) return;
+        pushedMeals.current[key] = json;
+        pushMeals(key, meals).catch(e => { console.warn('Meals upload failed:', e?.message || e); setSyncFailed(true); delete pushedMeals.current[key]; });
+      });
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [state.weeks, state.meals, state.custom, userId, syncedFor]);
+
+  const recipes = state.custom;
   const byId = useCallback(id => recipes.find(r => r.id === id), [recipes]);
   const t = useMemo(() => makeT(state.lang), [state.lang]);
 
   const actions = useMemo(() => ({
     set: patch => setState(s => ({ ...s, ...(typeof patch === 'function' ? patch(s) : patch) })),
     toggleMode: k => setState(s => ({ ...s, modes: { ...s.modes, [k]: !s.modes[k] } })),
-    buildWeek: () => setState(s => ({ ...s, onboarded: true, checked: {}, plan: planWeek(R.concat(s.custom), s.modes) })),
-    swapDay: d => setState(s => ({ ...s, plan: swap(s.plan, d, R.concat(s.custom), s.modes) })),
-    setDay: (d, id) => setState(s => { const plan = s.plan.slice(); plan[d] = id; return { ...s, plan }; }),
+    buildWeek: key => setState(s => withPlan({ ...s, onboarded: true, checked: {} }, planWeek(dinners(s.custom), s.modes), key)),
+    swapDay: d => setState(s => withPlan(s, swap(s.plan, d, dinners(s.custom), s.modes))),
+    setDay: (d, id, key = weekKey()) => setState(s => { const plan = (s.weeks[key] || []).slice(); plan[d] = id; return withPlan(s, plan, key); }),
+    // Puts a dish (or null) on one meal of a day. Dinner is the week's plan itself.
+    setMeal: (meal, d, id, key = weekKey()) => setState(s => {
+      if (meal === 'dinner') { const plan = (s.weeks[key] || []).slice(); plan[d] = id; return withPlan(s, plan, key); }
+      const week = s.meals?.[key] || {};
+      const list = (week[meal] || []).slice();
+      list[d] = id;
+      return { ...s, meals: { ...s.meals, [key]: { ...week, [meal]: list } } };
+    }),
     toggleItem: key => setState(s => ({ ...s, checked: { ...s.checked, [key]: !s.checked[key] } })),
     clearChecks: () => setState(s => ({ ...s, checked: {} })),
     addRecipe: r => setState(s => ({ ...s, custom: [...s.custom, r] })),
-    deleteRecipe: id => setState(s => ({ ...s, custom: s.custom.filter(r => r.id !== id), plan: s.plan.map(p => (p === id ? null : p)) })),
-    toggleFollow: id => setState(s => ({ ...s, following: s.following.includes(id) ? s.following.filter(x => x !== id) : [...s.following, id] })),
-    copyPlan: cookId => setState(s => ({ ...s, checked: {}, plan: COOKS.find(c => c.id === cookId).plan.slice() })),
+    updateRecipe: r => setState(s => ({ ...s, custom: s.custom.map(x => (x.id === r.id ? { ...x, ...r, dirty: x.cloud ? Date.now() : undefined } : x)) })),
+    deleteRecipe: id => setState(s => {
+      const r = s.custom.find(x => x.id === id);
+      if (r?.cloud && !isDemo) deleteCloudRecipe(r.cloud).catch(() => {});
+      const drop = p => p.map(x => (x === id ? null : x));
+      const weeks = Object.fromEntries(Object.entries(s.weeks).map(([k, p]) => [k, drop(p)]));
+      const meals = Object.fromEntries(Object.entries(s.meals || {}).map(([k, byMeal]) => [k, Object.fromEntries(Object.entries(byMeal).map(([m, p]) => [m, drop(p)]))]));
+      return { ...s, custom: s.custom.filter(x => x.id !== id), weeks, meals, plan: weeks[weekKey()] || [] };
+    }),
+    // Copies someone's recipe into yours, once. Returns nothing; the copy keeps a link to the original.
+    copyRecipe: r => setState(s => ({ ...s, custom: copyInto(s.custom, r).custom })),
+    // Copies someone's week (built-in ids, or their recipes) into a week of yours, from today on.
+    copyWeekFrom: (plan, theirs, key = weekKey()) => setState(s => {
+      const from = key === weekKey() ? new Date().getDay() : 0;
+      let custom = s.custom;
+      const next = (s.weeks[key] || []).slice();
+      plan.forEach((id, d) => {
+        if (d < from || !id) return;
+        const r = theirs.find(x => x.id === id);
+        if (!r) { next[d] = id; return; }
+        const res = copyInto(custom, r);
+        custom = res.custom;
+        next[d] = res.id;
+      });
+      return withPlan({ ...s, custom, checked: key === weekKey() ? {} : s.checked }, next, key);
+    }),
     toggleLike: id => setState(s => ({ ...s, liked: { ...s.liked, [id]: !s.liked[id] } })),
+    addComment: (id, comment) => setState(s => ({ ...s, recipeComments: { ...s.recipeComments, [id]: [...(s.recipeComments[id] || []), comment] } })),
     toggleSave: id => setState(s => ({ ...s, saved: { ...s.saved, [id]: !s.saved[id] } })),
-    toggleHome: k => setState(s => ({ ...s, homeShows: { ...s.homeShows, [k]: !s.homeShows[k] } })),
     signedIn: u => setUser(u),
     logout: async () => { try { await signOut(); } finally { setUser(null); } },
+    // Throws if the account wasn't deleted, so the screen can say so; the phone's copy goes too.
+    deleteAccount: async () => {
+      const id = await deleteAccount();
+      if (id) await AsyncStorage.removeItem(keyFor(id)).catch(() => {});
+      setUser(null);
+    },
   }), []);
 
-  const value = useMemo(() => ({ state, ready, user, recipes, byId, t, rtl: isRtl(state.lang), ...actions }), [state, ready, user, recipes, byId, t, actions]);
+  const value = useMemo(() => ({ state, ready, user, recovery, syncFailed, endRecovery: () => setRecovery(false), recipes, byId, t, rtl: isRtl(state.lang), ...actions }), [state, ready, user, recovery, syncFailed, recipes, byId, t, actions]);
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 

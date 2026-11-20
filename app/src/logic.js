@@ -1,11 +1,10 @@
 // Pure app logic (no React): translation helpers, quantities, cost,
 // weekly planner, shopping list and recipe validation.
 // Kept free of React Native imports so it runs under plain Node tests.
-import { S, DAYS, AISLES, AISLE_ORDER, TAG_KEYS, U, UNITS, UNIT_T, ING, R, COOKS } from './data.js';
+import { S, DAYS, AISLES, AISLE_ORDER, TAG_KEYS, U, UNITS, UNIT_T } from './data.js';
 import { STRINGS2 } from './strings2.js';
-import { POSTS } from './feed.js';
 
-export { DAYS, AISLES, AISLE_ORDER, TAG_KEYS, U, UNITS, R, COOKS, POSTS };
+export { DAYS, AISLES, AISLE_ORDER, TAG_KEYS, U, UNITS };
 
 export const LANGS = [
   { k: 'he', label: 'עברית', rtl: true, locale: 'he-IL' },
@@ -18,15 +17,15 @@ const EXTRA = {
   he: { obStep: 'שלב 1 מתוך 2', obTitle: 'מה חשוב אצלכם בבית?', obSub: 'אפשר לבחור כמה. נתאים את התכנון אליכם.', obBuild: 'בנו לי שבוע',
         sub_kids: 'מנות שילדים באמת אוכלים', sub_budget: 'ארוחות טעימות במחיר שפוי', sub_prep: 'בישול אחד גדול ביום ראשון', sub_quick: 'ערבי חול מהירים',
         yourWeek: 'השבוע שלכם', people: '{n} סועדים', left: 'נשארו {b}', openPrep: 'לתכנון הבישול הגדול', back: 'חזרה', cancel: 'ביטול', addToWeek: 'הוספה לשבוע', pickDay: 'לאיזה יום?',
-        sendList: 'שליחת הרשימה', newRecipe: 'מתכון חדש', addRecipe: 'הוספת מתכון', perPortion: 'למנה', byCook: 'מאת {n}', settings: 'הגדרות', photoPerm: 'צריך הרשאה לגלריה כדי להוסיף תמונות.' },
+        sendList: 'שליחת הרשימה', newRecipe: 'מתכון חדש', addRecipe: 'הוספת מתכון', perPortion: 'למנה', byCook: 'מאת {n}', settings: 'הגדרות' },
   en: { obStep: 'Step 1 of 2', obTitle: 'What matters in your home?', obSub: 'Pick any. We’ll tailor the plan to you.', obBuild: 'Build my week',
         sub_kids: 'Dishes kids actually eat', sub_budget: 'Tasty meals at a fair price', sub_prep: 'One big cook on Sunday', sub_quick: 'Quick weeknights',
         yourWeek: 'Your week', people: '{n} people', left: '{b} left', openPrep: 'Plan the big cook', back: 'Back', cancel: 'Cancel', addToWeek: 'Add to week', pickDay: 'Which day?',
-        sendList: 'Send the list', newRecipe: 'New recipe', addRecipe: 'Add a recipe', perPortion: 'per serving', byCook: 'by {n}', settings: 'Settings', photoPerm: 'Allow photo access to add pictures.' },
+        sendList: 'Send the list', newRecipe: 'New recipe', addRecipe: 'Add a recipe', perPortion: 'per serving', byCook: 'by {n}', settings: 'Settings' },
   ru: { obStep: 'Шаг 1 из 2', obTitle: 'Что важно в вашей семье?', obSub: 'Можно выбрать несколько. Подстроим меню под вас.', obBuild: 'Составить меню',
         sub_kids: 'Блюда, которые дети едят', sub_budget: 'Вкусно и недорого', sub_prep: 'Одна большая готовка в воскресенье', sub_quick: 'Быстрые будние ужины',
         yourWeek: 'Ваша неделя', people: '{n} чел.', left: 'осталось {b}', openPrep: 'План большой готовки', back: 'Назад', cancel: 'Отмена', addToWeek: 'В неделю', pickDay: 'На какой день?',
-        sendList: 'Отправить список', newRecipe: 'Новый рецепт', addRecipe: 'Добавить рецепт', perPortion: 'за порцию', byCook: '{n}', settings: 'Настройки', photoPerm: 'Разрешите доступ к фото, чтобы добавить снимки.' },
+        sendList: 'Отправить список', newRecipe: 'Новый рецепт', addRecipe: 'Добавить рецепт', perPortion: 'за порцию', byCook: '{n}', settings: 'Настройки' },
 };
 
 export function makeT(lang) {
@@ -44,14 +43,15 @@ export const isRtl = lang => (LANGS.find(l => l.k === lang) || LANGS[0]).rtl;
 export const num = (n, lang) => Number(n).toLocaleString(localeOf(lang));
 export const money = (n, lang) => '₪' + num(Math.round(n), lang);
 export const unitName = (u, lang) => (lang === 'he' ? u : (UNIT_T[lang] || {})[u] || u);
-export const ingName = (n, lang) => (lang === 'he' ? n : ING[n] ? ING[n][lang === 'en' ? 0 : 1] : n);
+// Ingredient names are shown exactly as the cook typed them, in every language.
+export const ingName = n => n;
 export const dayName = (d, lang) => DAYS[lang][d];
 export const aisleName = (a, lang) => AISLES[lang][a];
 
+// Amounts keep their real value; only whole things (eggs, onions) round up, since you can't use 3.75 eggs.
 export function roundQty(q, u) {
-  if (u === 'גרם') return Math.max(50, Math.round(q / 50) * 50);
-  if (u === 'מ״ל') return Math.max(10, Math.round(q / 10) * 10);
-  if (['כוס', 'כף', 'כפית', 'ק״ג'].includes(u)) return Math.round(q * 2) / 2 || 0.5;
+  if (u === 'גרם' || u === 'מ״ל') return Math.round(q);
+  if (['כוס', 'כף', 'כפית', 'ק״ג'].includes(u)) return Math.round(q * 100) / 100;
   return Math.ceil(q - 1e-9);
 }
 export function fmtQty(q, u, lang) {
@@ -103,16 +103,10 @@ export function shoppingList(recipes, servings) {
     if (!map[k]) map[k] = { key: k, n, u, a, q: 0 };
     map[k].q += q * factor(servings);
   }
-  return Object.values(map);
+  return Object.values(map).sort((x, y) => x.n.localeCompare(y.n));
 }
 export function listText(items, lang, t) {
-  let s = t('listTitle', { app: t('app') }) + '\n';
-  for (const a of AISLE_ORDER) {
-    const l = items.filter(i => i.a === a);
-    if (!l.length) continue;
-    s += '\n' + aisleName(a, lang) + '\n' + l.map(i => '• ' + ingName(i.n, lang) + ' – ' + fmtQty(i.q, i.u, lang)).join('\n') + '\n';
-  }
-  return s;
+  return t('listTitle', { app: t('app') }) + '\n\n' + items.map(i => '• ' + ingName(i.n, lang) + ' – ' + fmtQty(i.q, i.u, lang)).join('\n') + '\n';
 }
 
 /* ---------- validation (same limits as the backend) ---------- */
@@ -149,10 +143,11 @@ export function validateRecipe(form, existing, t) {
     errors, first: null,
     value: {
       id: 'c' + Date.now(), name, time: tn, m: 'stove', tags, custom: true,
-      ing: full.map(r => [r.n.trim(), Number(r.q), r.u, r.a, 0]),
+      ing: full.map(r => [r.n.trim(), Number(r.q), r.u, r.a, 0, r.f || null]),
       steps, photos: (form.photos || []).slice(0, LIMITS.photos),
       kid: tags.includes('kids') && form.kid?.trim() ? form.kid.trim() : undefined,
       keep: tags.includes('prep') ? 3 : 0,
+      meals: mealsOf(form),
     },
   };
 }
@@ -176,6 +171,33 @@ export function thisSunday(now = new Date()) {
   const d = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   d.setDate(d.getDate() - d.getDay());
   return d;
+}
+/** Saved plans are stored by the date of the week's Sunday, as YYYY-MM-DD. */
+export function weekKey(sunday = thisSunday()) {
+  const pad = n => String(n).padStart(2, '0');
+  return `${sunday.getFullYear()}-${pad(sunday.getMonth() + 1)}-${pad(sunday.getDate())}`;
+}
+/* ---------- meals ---------- */
+// A day of a week holds one dish of each meal. Dinner lives in `weeks` (as it always has);
+// the others in `meals`, by week and then by meal, 7 entries each, Sunday first.
+export const MEALS = ['breakfast', 'lunch', 'dinner', 'snack', 'dessert'];
+export const OTHER_MEALS = MEALS.filter(m => m !== 'dinner');
+/** The meals a recipe suits, in the order of the day; dinner for recipes from before meals existed. */
+export function mealsOf(r) {
+  const picked = Array.isArray(r?.meals) ? r.meals : r?.meal ? [r.meal] : [];
+  const list = MEALS.filter(m => picked.includes(m));
+  return list.length ? list : ['dinner'];
+}
+/** The meal a recipe is planned for first: dinner when it suits dinner, else its first meal. */
+export const mealOf = r => { const list = mealsOf(r); return list.includes('dinner') ? 'dinner' : list[0]; };
+/** A week's list for one meal: 7 recipe ids or nulls. */
+export const mealPlan = (state, key, meal) => (meal === 'dinner' ? state.weeks[key] : state.meals?.[key]?.[meal]) || [];
+/** Every dish planned in a week, all meals, once per time it's cooked. */
+export const weekDishIds = (state, key) => MEALS.flatMap(m => mealPlan(state, key, m)).filter(Boolean);
+
+export function keyToDate(key) {
+  const [y, m, d] = key.split('-').map(Number);
+  return new Date(y, m - 1, d);
 }
 
 /* ---------- accounts ---------- */
@@ -207,10 +229,35 @@ export function timeAgo(hours, t) {
   const d = Math.floor(hours / 24);
   return d === 1 ? t('yesterday') : t('daysAgo', { n: d });
 }
-/** Posts from followed cooks, newest first; optionally only one cook. */
-export function feedFor(following, onlyCook = null, posts = POSTS) {
-  return posts
-    .filter(p => following.includes(p.cook) && (!onlyCook || p.cook === onlyCook))
-    .sort((a, b) => a.hours - b.hours);
-}
 export const firstName = user => ((user?.name || user?.email || '').trim().split(/[\s@]/)[0] || '');
+
+/* ---------- your data on this phone and in the database ---------- */
+// Supabase holds your recipes and weeks; this phone keeps a copy so the app opens fast and
+// works offline. On sign-in the database wins, except for changes made here that haven't
+// reached it yet: recipes not saved yet, edits and photos still uploading, and weeks that use them.
+export function mergeMine(local, server, thisWeek = weekKey()) {
+  const here = new Map(local.custom.filter(r => r.cloud).map(r => [r.cloud, r]));
+  const idOf = {}; // database id -> id on this phone
+  const custom = server.recipes.map(s => {
+    const l = here.get(s.cloud);
+    idOf[s.cloud] = l ? l.id : s.id;
+    if (!l) return s;
+    if (l.dirty) return l;
+    const photosWaiting = JSON.stringify(l.photos || []) !== l.photosSaved;
+    return { ...s, id: l.id, serves: l.serves, ...(photosWaiting ? { photos: l.photos, photosSaved: l.photosSaved } : {}) };
+  });
+  const waiting = local.custom.filter(r => !r.cloud); // not saved yet; recipes saved but gone were deleted elsewhere
+  const unsaved = new Set(waiting.map(r => r.id));
+  const weeks = { ...local.weeks };
+  for (const [key, plan] of Object.entries(server.weeks)) {
+    if ((local.weeks[key] || []).some(id => unsaved.has(id))) continue;
+    weeks[key] = plan.map(id => (id && idOf[id]) || id);
+  }
+  const meals = { ...(local.meals || {}) };
+  for (const [key, byMeal] of Object.entries(server.meals || {})) {
+    const mine = local.meals?.[key] || {};
+    if (Object.values(mine).some(list => list.some(id => unsaved.has(id)))) continue;
+    meals[key] = Object.fromEntries(Object.entries(byMeal).map(([m, list]) => [m, list.map(id => (id && idOf[id]) || id)]));
+  }
+  return { ...local, custom: [...custom, ...waiting], weeks, meals, plan: weeks[thisWeek] || [] };
+}

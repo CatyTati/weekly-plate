@@ -1,13 +1,15 @@
 // Sign in, sign up and password reset.
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { useStore } from '../store';
-import { isDemo, signInWithEmail, signInWithProvider, signUpWithEmail, sendPasswordReset } from '../auth';
-import { validateEmail, validateSignIn, validateSignUp } from '../logic';
+import { appleAvailable, isDemo, signInWithEmail, signInWithProvider, signUpWithEmail, sendPasswordReset, updatePassword } from '../auth';
+import { PASS_MIN, validateEmail, validateSignIn, validateSignUp } from '../logic';
 import { color, radius, shadow } from '../theme';
 import { Button, Checkbox, Field, Header, Row, RoundButton, Screen, T } from '../components/ui';
+import FoodArt from '../components/FoodArt';
 import { LanguageSwitch } from './Onboarding';
+import Privacy from './Privacy';
 
 const GoogleLogo = () => (
   <Svg width={18} height={18} viewBox="0 0 24 24">
@@ -45,16 +47,6 @@ function Divider({ label }) {
   );
 }
 
-function Logo() {
-  return (
-    <View style={{ width: 88, height: 88, borderRadius: 28, backgroundColor: color.accentSoft, alignItems: 'center', justifyContent: 'center', alignSelf: 'center' }}>
-      <View style={{ width: 60, height: 60, borderRadius: 30, backgroundColor: color.surface, alignItems: 'center', justifyContent: 'center', ...shadow }}>
-        <View style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: '#8DBB9D' }} />
-      </View>
-    </View>
-  );
-}
-
 function Banner({ text, kind = 'error' }) {
   if (!text) return null;
   const err = kind === 'error';
@@ -65,13 +57,46 @@ function Banner({ text, kind = 'error' }) {
   );
 }
 
+/** Choose a new password, after the link in a reset email signed the user in. */
+export function NewPassword() {
+  const { t, endRecovery } = useStore();
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState(null);
+  const [message, setMessage] = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  async function submit() {
+    const err = !password ? t('ePassReq') : password.length < PASS_MIN ? t('ePass') : null;
+    setError(err); setMessage(null);
+    if (err) return;
+    setBusy(true);
+    try { await updatePassword(password); endRecovery(); }
+    catch (e) { setMessage(t(e.code || 'eNetwork')); }
+    finally { setBusy(false); }
+  }
+
+  return (
+    <Screen footer={busy ? <ActivityIndicator color={color.accent} /> : <Button label={t('savePass')} onPress={submit} />}>
+      <Header title={t('newPassTitle')} sub={t('newPassSub')} />
+      <Banner text={message} />
+      <Field label={`${t('password')} · ${t('passHint')}`} value={password} secureTextEntry autoCapitalize="none" autoComplete="new-password" textContentType="newPassword"
+        error={error} onChangeText={v => { setPassword(v); setError(null); setMessage(null); }} onSubmitEditing={submit} />
+    </Screen>
+  );
+}
+
 export default function Auth({ onSignedIn }) {
-  const { t } = useStore();
+  const { state, t } = useStore();
   const [mode, setMode] = useState('signin'); // signin | signup | forgot
   const [form, setForm] = useState({ name: '', email: '', password: '', terms: false });
   const [errors, setErrors] = useState({});
   const [message, setMessage] = useState(null); // { text, kind }
   const [busy, setBusy] = useState(false);
+  const [apple, setApple] = useState(false); // iPhone only
+  const [showPrivacy, setShowPrivacy] = useState(false);
+  useEffect(() => { appleAvailable().then(setApple); }, []);
+
+  useEffect(() => { setErrors({}); setMessage(null); }, [state.lang]); // messages are stored already translated
 
   const set = (k, v) => { setForm(f => ({ ...f, [k]: v })); setErrors(e => ({ ...e, [k]: undefined })); setMessage(null); };
   const go = m => { setMode(m); setErrors({}); setMessage(null); };
@@ -116,20 +141,20 @@ export default function Auth({ onSignedIn }) {
       <LanguageSwitch />
       {mode === 'signin' ? (
         <>
-          <View style={{ gap: 10, paddingTop: 16 }}>
-            <Logo />
+          <FoodArt height={200} />
+          <View style={{ gap: 6 }}>
             <T v="display" center>{t('app')}</T>
             <T c="muted" center>{t('tagline')}</T>
           </View>
           {social('google', t('withGoogle'))}
-          {social('apple', t('withApple'))}
+          {apple ? social('apple', t('withApple')) : null}
           <Divider label={t('orEmail')} />
         </>
       ) : (
         <>
           <RoundButton icon="back" flip label={t('back')} onPress={() => go('signin')} />
           <Header title={mode === 'signup' ? t('createAccount') : t('forgotTitle')} sub={mode === 'signup' ? t('createSub') : t('forgotSub')} />
-          {mode === 'signup' ? <>{social('google', t('signupGoogle'))}<Divider label={t('or')} /></> : null}
+          {mode === 'signup' ? <>{social('google', t('signupGoogle'))}{apple ? social('apple', t('signupApple')) : null}<Divider label={t('or')} /></> : null}
         </>
       )}
 
@@ -159,6 +184,12 @@ export default function Auth({ onSignedIn }) {
           </Row>
         </Pressable>
       ) : null}
+      {mode === 'signup' ? (
+        <Pressable accessibilityRole="link" onPress={() => setShowPrivacy(true)} hitSlop={8} style={{ alignSelf: 'flex-start' }}>
+          <T v="bodyStrong" c="accent">{t('readPrivacy')}</T>
+        </Pressable>
+      ) : null}
+      <Privacy visible={showPrivacy} onClose={() => setShowPrivacy(false)} />
 
       {isDemo ? <T v="label" c="muted" center>{t('demoNote')}</T> : null}
     </Screen>

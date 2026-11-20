@@ -1,67 +1,93 @@
-import React, { useMemo, useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, StyleSheet, View, useColorScheme } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useFonts, Rubik_300Light, Rubik_400Regular, Rubik_500Medium } from '@expo-google-fonts/rubik';
 import { StoreProvider, useStore } from './src/store';
 import { NavCtx, MAIN_TABS, TabBarCtx } from './src/nav';
-import { color } from './src/theme';
+import { applyTheme, color } from './src/theme';
 import { TabBar } from './src/components/ui';
-import Auth from './src/screens/Auth';
+import Auth, { NewPassword } from './src/screens/Auth';
 import Onboarding from './src/screens/Onboarding';
 import Home from './src/screens/Home';
-import Week from './src/screens/Week';
+import Week, { initialWeekView } from './src/screens/Week';
 import Feed from './src/screens/Feed';
+import Search from './src/screens/Search';
 import Shop from './src/screens/Shop';
 import Prep from './src/screens/Prep';
-import Recipes from './src/screens/Recipes';
+import Recipes, { PickRecipe } from './src/screens/Recipes';
 import RecipeDetail from './src/screens/RecipeDetail';
 import AddRecipe from './src/screens/AddRecipe';
 import Community from './src/screens/Community';
+import Comments from './src/screens/Comments';
+import People from './src/screens/People';
+import Profile from './src/screens/Profile';
 import Settings from './src/screens/Settings';
 import Menu from './src/screens/Menu';
+import Foods from './src/screens/Foods';
+import { loadFoods } from './src/foods';
 
 function Root() {
-  const { ready, state, user, rtl, signedIn } = useStore();
+  const { ready, state, user, recovery, rtl, signedIn } = useStore();
+  const system = useColorScheme();
+  const dark = state.theme === 'dark' || (state.theme !== 'light' && system === 'dark');
+  applyTheme(dark); // before anything below reads `color`
   const [view, setView] = useState('home'); // home | week | feed | shop | recipes | community | settings
   const [stack, setStack] = useState([]); // screens opened on top of a view
   const [menu, setMenu] = useState(false);
-  const [feedOf, setFeedOf] = useState(null);
+  const [weekView, setWeekView] = useState(initialWeekView);
+  useEffect(() => { loadFoods(user?.id).catch(() => {}); }, [user?.id]); // for calories
 
   const nav = useMemo(() => ({
     go: v => { setStack([]); setView(v); setMenu(false); },
     open: (screen, params = {}) => setStack(s => [...s, { screen, params }]),
     back: () => setStack(s => s.slice(0, -1)),
     openMenu: () => setMenu(true),
-    showFeedOf: id => { setFeedOf(id); setStack([]); setView('feed'); },
+    showWeek: week => { setWeekView(v => ({ ...v, week, picking: false })); setStack([]); setView('week'); },
   }), []);
 
   if (!ready) return <View style={{ flex: 1, backgroundColor: color.bg, alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator color={color.accent} /></View>;
 
   const top = stack[stack.length - 1];
+  // A recipe opened while choosing a dinner sits over the list, so going back keeps your place in it.
+  const picking = top?.screen === 'pick' ? top : top?.screen === 'recipe' && stack[stack.length - 2]?.screen === 'pick' ? stack[stack.length - 2] : null;
+  const recipeView = top?.screen === 'recipe' ? <RecipeDetail id={top.params.id} recipe={top.params.recipe} canCopy={top.params.canCopy} pickFor={top.params.pickFor} back={nav.back} /> : null;
   let body;
-  if (!user) body = <Auth onSignedIn={u => { signedIn(u); nav.go('home'); }} />;
+  if (recovery && user) body = <NewPassword />;
+  else if (!user) body = <Auth onSignedIn={u => { signedIn(u); nav.go('home'); }} />;
   else if (!state.onboarded) body = <Onboarding />;
-  else if (top?.screen === 'recipe') body = <RecipeDetail id={top.params.id} back={nav.back} />;
-  else if (top?.screen === 'add') body = <AddRecipe back={nav.back} />;
+  else if (picking) body = (
+    <View style={{ flex: 1 }}>
+      <PickRecipe week={picking.params.week} day={picking.params.day} meal={picking.params.meal} open={nav.open} back={nav.back} />
+      {recipeView ? <View style={[StyleSheet.absoluteFill, { backgroundColor: color.bg }]}>{recipeView}</View> : null}
+    </View>
+  );
+  else if (recipeView) body = recipeView;
+  else if (top?.screen === 'profile') body = <Profile key={top.params.id} id={top.params.id} back={nav.back} />;
+  else if (top?.screen === 'people') body = <People tab={top.params.tab} back={nav.back} />;
+  else if (top?.screen === 'comments') body = <Comments recipeId={top.params.recipeId} name={top.params.name} owner={top.params.owner} back={nav.back} />;
+  else if (top?.screen === 'add') body = <AddRecipe id={top.params?.id} back={nav.back} />;
   else if (top?.screen === 'prep') body = <Prep back={nav.back} />;
+  else if (top?.screen === 'foods') body = <Foods back={nav.back} />;
+  else if (top?.screen === 'search') body = <Search back={nav.back} />;
   else if (view === 'home') body = <Home />;
-  else if (view === 'week') body = <Week open={nav.open} />;
-  else if (view === 'feed') body = <Feed only={feedOf} />;
+  else if (view === 'week') body = <Week open={nav.open} view={weekView} setView={setWeekView} />;
+  else if (view === 'feed') body = <Feed />;
   else if (view === 'shop') body = <Shop />;
   else if (view === 'recipes') body = <Recipes open={nav.open} />;
-  else if (view === 'community') body = <Community goWeek={() => nav.go('week')} />;
+  else if (view === 'community') body = <Community />;
   else body = <Settings />;
 
-  const signedInApp = user && state.onboarded;
+  const signedInApp = user && state.onboarded && !recovery;
   const showTabBar = !!(signedInApp && !top);
   return (
     // `direction` mirrors every row for Hebrew without restarting the app.
     <NavCtx.Provider value={signedInApp ? nav : {}}>
-      <View style={{ flex: 1, backgroundColor: color.bg, direction: rtl ? 'rtl' : 'ltr' }}>
-        <StatusBar style="dark" />
+      {/* A new key draws every screen again with the new palette. */}
+      <View key={dark ? 'dark' : 'light'} style={{ flex: 1, backgroundColor: color.bg, direction: rtl ? 'rtl' : 'ltr' }}>
+        <StatusBar style={dark ? 'light' : 'dark'} />
         <TabBarCtx.Provider value={showTabBar}><View style={{ flex: 1 }}>{body}</View></TabBarCtx.Provider>
-        {showTabBar ? <TabBar tab={MAIN_TABS.includes(view) ? view : null} onTab={k => { if (k === 'feed') setFeedOf(null); nav.go(k); }} /> : null}
+        {showTabBar ? <TabBar tab={MAIN_TABS.includes(view) ? view : null} onTab={nav.go} /> : null}
         {signedInApp ? <Menu visible={menu} onClose={() => setMenu(false)} current={top ? null : view} go={nav.go} openScreen={nav.open} /> : null}
       </View>
     </NavCtx.Provider>
