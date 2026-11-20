@@ -51,6 +51,56 @@ so every screen can be tried. To use real accounts with Supabase:
 3. Copy `.env.example` to `.env` and fill in the project URL and anon key.
 4. Restart with `npx expo start --clear`.
 
+### Google and Apple sign-in inside the app
+
+In Expo Go, Google and Apple open the browser, and Google's page says
+"Sign in to xxxx.supabase.co". In a development or store build the app uses the
+phone's own sign-in sheet instead, which shows **Weekly Plate**. It's free.
+
+**Google Cloud** (console.cloud.google.com, the project already used for Supabase):
+
+1. Google Auth Platform > Branding: app name **Weekly Plate**, logo, support email.
+2. Google Auth Platform > Clients: the existing **Web application** client (the one
+   in Supabase) stays. Copy its client ID to `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID`.
+3. Create client > **Android**: package name `com.catytati.weeklyplate` and the
+   SHA-1 of the key that signs the app. One Android client per key:
+   - Build on your computer (`npm run android:build`): run
+     `cd android && ./gradlew signingReport` and take SHA1 of the `debug` variant.
+   - EAS build: `npx eas credentials` > Android shows the SHA-1.
+   - Google Play: Play Console > Test and release > App integrity > App signing key.
+4. For iPhone: Create client > **iOS**, bundle ID `com.catytati.weeklyplate`. Put its
+   client ID in `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID`, and add the plugin with its
+   "iOS URL scheme" to `plugins` in `app.json`:
+   `["@react-native-google-signin/google-signin", { "iosUrlScheme": "com.googleusercontent.apps.…" }]`
+
+**Supabase**: Authentication > Providers > Google > **Client IDs**: list the Web client
+ID first, then the iOS client ID, separated by commas. For iPhone also turn on
+**Skip nonce checks**. (The Android client ID doesn't go here.)
+
+**Apple** (iPhone): in Supabase > Providers > Apple add the bundle ID
+`com.catytati.weeklyplate` to Client IDs. The App ID needs "Sign in with Apple",
+which EAS sets up on the first build.
+
+**Build and run** (the native sign-in needs its own build, not Expo Go):
+
+```bash
+npm install
+npm run setup
+npx eas-cli login                                          # free account on expo.dev
+npx eas-cli init                                           # once: links the app to the Expo account
+npx eas-cli build -p android --profile development         # builds in the cloud, gives an install link
+npx eas-cli credentials -p android                         # shows the SHA-1 for the Android client
+npx expo start                                             # then open the installed app: it reloads like Expo Go
+```
+
+The development build loads its code from `npx expo start`, so it reads `.env`
+from your computer. Builds for the store (`--profile production`) don't see `.env`:
+add the same `EXPO_PUBLIC_…` values on expo.dev > Project > Environment variables.
+With Android Studio installed, `npm run android:build` builds on the computer instead.
+
+If the native sheet can't be used (Expo Go, or a client ID is missing) the app falls
+back to the browser, so sign-in keeps working.
+
 ## Code
 
 | Path | What it is |

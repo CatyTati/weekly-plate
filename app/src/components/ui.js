@@ -4,10 +4,10 @@
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { color, font, radius, shadow, tagColor, type } from '../theme';
 import { useStore } from '../store';
-import { useNav } from '../nav';
+import { useHasTabBar, useNav } from '../nav';
 
 export function T({ v = 'body', c = 'ink', center, style, children, ...rest }) {
   const { rtl } = useStore();
@@ -64,6 +64,11 @@ export function Icon({ name, c = 'ink', size = 22, w = 1.9, flip }) {
 
 export function Screen({ children, scroll = true, footer }) {
   const Body = scroll ? ScrollView : View;
+  // Without a tab bar, keep the bottom of the screen clear of the system navigation bar
+  // (Android draws the app edge-to-edge, so it would otherwise cover and swallow taps).
+  const hasTabBar = useHasTabBar();
+  const insets = useSafeAreaInsets();
+  const bottom = hasTabBar ? 0 : insets.bottom;
   return (
     <View style={s.screen}>
       <View pointerEvents="none" style={s.glowWrap}>
@@ -71,10 +76,11 @@ export function Screen({ children, scroll = true, footer }) {
         <View style={[s.glow, { backgroundColor: color.glowGreen, left: -110, top: -120 }]} />
       </View>
       <SafeAreaView edges={['top']} style={{ flex: 1 }}>
-        <Body style={{ flex: 1 }} contentContainerStyle={scroll ? s.content : undefined} keyboardShouldPersistTaps="handled">
-          {scroll ? children : <View style={[s.content, { flex: 1 }]}>{children}</View>}
+        <Body style={{ flex: 1 }} contentContainerStyle={scroll ? [s.content, !footer && { paddingBottom: s.content.paddingBottom + bottom }] : undefined}
+          keyboardShouldPersistTaps="handled">
+          {scroll ? children : <View style={[s.content, { flex: 1 }, !footer && { paddingBottom: s.content.paddingBottom + bottom }]}>{children}</View>}
         </Body>
-        {footer ? <View style={s.footer}>{footer}</View> : null}
+        {footer ? <View style={[s.footer, { paddingBottom: s.footer.paddingBottom + bottom }]}>{footer}</View> : null}
       </SafeAreaView>
     </View>
   );

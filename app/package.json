@@ -9,13 +9,19 @@
     "ios": "expo start --ios",
     "android": "expo start --android",
     "web": "expo start --web",
-    "test": "node --test --experimental-default-type=module src/logic.test.mjs"
+    "test": "node --test --experimental-default-type=module src/logic.test.mjs",
+    "android:build": "expo run:android",
+    "ios:build": "expo run:ios"
   },
   "dependencies": {
     "@expo-google-fonts/rubik": "*",
     "@react-native-async-storage/async-storage": "*",
+    "@react-native-google-signin/google-signin": "*",
     "@supabase/supabase-js": "*",
     "expo": "latest",
+    "expo-apple-authentication": "*",
+    "expo-constants": "*",
+    "expo-dev-client": "*",
     "expo-font": "*",
     "expo-image-picker": "*",
     "expo-linking": "*",
